@@ -1,5 +1,5 @@
-import { PaymentManagement } from '@/components/payments/payment-management';
-import { DashboardHeader } from '@/components/dashboard/dashboard-header';
+import { PaymentManagement } from '@/app/features/payments';
+import { DashboardHeader } from '@/app/widgets/dashboard';
 
 export default function PaymentsPage() {
   return (

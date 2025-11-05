@@ -1,7 +1,9 @@
-import { DashboardHeader } from '@/components/dashboard/dashboard-header';
-import { CampaignOverview } from '@/components/dashboard/campaign-overview';
-import { QuickActions } from '@/components/dashboard/quick-actions';
-import { RecentActivity } from '@/components/dashboard/recent-activity';
+import {
+  DashboardHeader,
+  CampaignOverview,
+  QuickActions,
+  RecentActivity,
+} from '@/app/widgets/dashboard';
 
 export default function DashboardPage() {
   return (

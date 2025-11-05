@@ -1,4 +1,4 @@
-import { CampaignCreationFlow } from '@/components/campaigns/campaign-creation-flow';
+import { CampaignCreationFlow } from '@/app/features/campaigns';
 
 export default function CreateCampaignPage() {
   return (

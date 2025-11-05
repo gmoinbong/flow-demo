@@ -1,5 +1,5 @@
-import { CreatorDiscovery } from '@/components/creators/creator-discovery';
-import { DashboardHeader } from '@/components/dashboard/dashboard-header';
+import { CreatorDiscovery } from '@/app/features/creators';
+import { DashboardHeader } from '@/app/widgets/dashboard';
 
 export default function CreatorsPage() {
   return (

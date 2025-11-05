@@ -1,4 +1,4 @@
-import { LoginForm } from '@/components/auth/login-form';
+import { LoginForm } from '@/app/features/auth';
 import { BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 

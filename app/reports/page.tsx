@@ -1,5 +1,5 @@
-import { ReportsAndAnalytics } from '@/components/reports/reports-and-analytics';
-import { DashboardHeader } from '@/components/dashboard/dashboard-header';
+import { ReportsAndAnalytics } from '@/app/features/reports';
+import { DashboardHeader } from '@/app/widgets/dashboard';
 
 export default function ReportsPage() {
   return (

@@ -1,5 +1,5 @@
-import { LiveCampaignDashboard } from '@/components/campaigns/live-campaign-dashboard';
-import { DashboardHeader } from '@/components/dashboard/dashboard-header';
+import { LiveCampaignDashboard } from '@/app/features/campaigns';
+import { DashboardHeader } from '@/app/widgets/dashboard';
 
 export default async function CampaignDetailsPage({
   params,

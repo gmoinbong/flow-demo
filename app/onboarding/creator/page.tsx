@@ -1,4 +1,4 @@
-import { CreatorOnboardingFlow } from '@/components/onboarding/creator-onboarding-flow';
+import { CreatorOnboardingFlow } from '@/app/features/onboarding';
 
 export default function CreatorOnboardingPage() {
   return (

@@ -1,4 +1,4 @@
-import { CreatorDashboardView } from '@/components/creator/creator-dashboard-view';
+import { CreatorDashboardView } from '@/app/features/creator';
 
 export default function CreatorDashboardPage() {
   return <CreatorDashboardView />;

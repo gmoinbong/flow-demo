@@ -1,0 +1,903 @@
+---
+alwaysApply: true
+---
+#Frontend - Cursor Rules
+
+You are an expert Next.js 15, React 19, TypeScript, and Tailwind CSS developer. You follow Feature-Sliced Design architecture with strict layer separation.
+
+## Core Stack
+
+- **Framework**: Next.js 15.2.4 (App Router)
+- **React**: 19.0.0
+- **TypeScript**: 5 (strict mode)
+- **State**: Zustand 5.0.6
+- **Data**: TanStack React Query 5.83.0
+- **Validation**: Zod 4.0.5
+- **UI**: Radix UI + Tailwind CSS 4
+- **Styling**: Tailwind utility-first, NO custom CSS
+
+## Project Structure
+
+```
+app/
+├── features/          # Business logic modules
+├── widgets/           # Composite UI components
+├── shared/            # Reusable utilities
+├── stores/            # Zustand global state
+├── hooks/             # Custom React hooks
+├── types/             # TypeScript domain types
+├── api/               # Next.js API routes
+└── [routes]/          # App pages
+```
+
+## Architecture Rules
+
+### Layer Import Hierarchy
+
+**STRICT HIERARCHY (low to high):**
+```
+shared → features → widgets → app/[routes]
+```
+
+**Import Rules:**
+- `shared/` imports: NOTHING (self-contained)
+- `features/` imports: ONLY `shared/`
+- `widgets/` imports: ONLY `shared/` and `features/`
+- `app/[routes]/` imports: EVERYTHING
+
+**FORBIDDEN:**
+- Features importing other features
+- Widgets importing other widgets
+- Circular dependencies
+- Direct imports from feature internals (use public API via `index.ts`)
+
+### Feature Module Structure
+
+ALWAYS structure features like this:
+
+```
+features/[feature-name]/
+├── model/
+│   └── types.ts          # Domain types
+├── api/
+│   └── [feature]-api.ts  # API clients
+├── lib/
+│   └── use-[feature].ts  # Business logic hooks
+├── ui/
+│   └── [components].tsx  # Feature UI components
+└── index.ts              # PUBLIC API - export ONLY what's needed
+```
+
+**Rules:**
+- Business logic goes in `lib/`, NEVER in components
+- Each feature MUST have `index.ts` as public API
+- External code imports ONLY through `index.ts`
+- UI in `ui/` is feature-specific, not shared
+
+**Example index.ts:**
+```typescript
+// features/auth/index.ts
+export { useAuth } from './lib/use-auth';
+export { AuthProvider } from './ui/auth-provider';
+export type { User } from './model/types';
+// DO NOT export internal implementation
+```
+
+### Widgets Structure
+
+Widgets are composite UI components:
+
+```
+widgets/[category]/
+├── [widget-name].tsx
+└── index.ts
+```
+
+**Rules:**
+- Can contain display logic, NO business logic
+- Import from `features/` and `shared/`
+- Export through `widgets/index.ts`
+- NO state management (use features)
+- NO API calls (use feature hooks)
+
+### Shared Structure
+
+Shared contains ONLY truly reusable code:
+
+```
+shared/
+├── api/          # Generic API clients
+├── components/   # Reusable components
+├── hooks/        # Generic hooks
+├── lib/          # Utilities
+├── schemas/      # Zod schemas
+├── ui/           # UI primitives (Button, Input)
+└── utils/        # Helpers
+```
+
+**Rules:**
+- ZERO dependencies on features/widgets
+- Pure utilities, no business logic
+- Truly generic, reusable everywhere
+
+## Component Patterns
+
+### Server Components (Default)
+
+Use Server Components by DEFAULT. NO `'use client'` directive.
+
+```typescript
+// app/physicians/page.tsx
+export default function PhysiciansPage() {
+  // This is a Server Component
+  return (
+    <div>
+      <h1>Physicians</h1>
+      <PhysiciansList /> {/* Can be client component */}
+    </div>
+  );
+}
+```
+
+### Client Components
+
+Add `'use client'` ONLY when you need:
+- Event handlers (onClick, onChange)
+- React hooks (useState, useEffect)
+- Browser APIs
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+
+export function InteractiveForm() {
+  const [value, setValue] = useState('');
+  
+  return (
+    <input 
+      value={value} 
+      onChange={(e) => setValue(e.target.value)}
+    />
+  );
+}
+```
+
+**CRITICAL:**
+- ❌ NEVER use `localStorage` or `sessionStorage` (not supported)
+- ✅ Use React state (`useState`) or Zustand stores
+- ✅ Keep client boundaries minimal
+
+## Data Fetching Patterns
+
+### React Query for ALL data fetching
+
+**Query Pattern:**
+```typescript
+// app/hooks/use-providers.ts
+import { useQuery } from '@tanstack/react-query';
+
+export function useProviders() {
+  return useQuery({
+    queryKey: ['providers'],
+    queryFn: async () => {
+      const res = await fetch('/api/providers');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
+}
+```
+
+**Mutation Pattern:**
+```typescript
+// app/hooks/use-claim-profile.ts
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+export function useClaimProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await fetch('/api/profile/claim', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+```
+
+**Usage in Components:**
+```typescript
+'use client';
+
+export function ProfileForm() {
+  const { data, isLoading } = useProviders();
+  const mutation = useClaimProfile();
+  
+  if (isLoading) return <Spinner />;
+  
+  return <form onSubmit={() => mutation.mutate(data)} />;
+}
+```
+
+**Rules:**
+- ✅ Use `useQuery` for GET
+- ✅ Use `useMutation` for POST/PUT/DELETE
+- ✅ Invalidate queries after mutations
+- ❌ NO direct fetch() in components
+
+## API Routes
+
+### Route Handler Pattern
+
+```typescript
+// app/api/providers/by-npi/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  // 1. Get and validate params
+  const npi = request.nextUrl.searchParams.get('npi');
+  
+  if (!npi) {
+    return NextResponse.json(
+      { error: 'NPI is required' },
+      { status: 400 }
+    );
+  }
+
+  // 2. Try-catch for error handling
+  try {
+    // 3. Proxy to backend
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const response = await fetch(`${backendUrl}/providers/by-npi?npi=${npi}`);
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Provider not found' },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+    
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+**Rules:**
+- ✅ Always validate input
+- ✅ Use try-catch
+- ✅ Return consistent error format
+- ✅ Proxy to backend via `NEXT_PUBLIC_BASE_URL`
+- ❌ NO business logic in API routes
+
+## State Management
+
+### Zustand Stores
+
+**Store Pattern:**
+```typescript
+// stores/organization-setup-store.ts
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface Store {
+  formData: FormData | null;
+  currentStep: number;
+  setFormData: (data: FormData) => void;
+  setCurrentStep: (step: number) => void;
+}
+
+export const useOrganizationSetupStore = create<Store>()(
+  persist(
+    (set) => ({
+      formData: null,
+      currentStep: 1,
+      setFormData: (data) => set({ formData: data }),
+      setCurrentStep: (step) => set({ currentStep: step }),
+    }),
+    { name: 'organization-setup-store' }
+  )
+);
+```
+
+**SSR-Safe Hook Pattern:**
+```typescript
+// stores/use-organization-setup-store-safe.ts
+import { useState, useEffect } from 'react';
+import { useOrganizationSetupStore } from './organization-setup-store';
+
+export function useOrganizationSetupStoreSafe() {
+  const store = useOrganizationSetupStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return {
+      formData: null,
+      currentStep: 1,
+      setFormData: () => {},
+      setCurrentStep: () => {},
+    };
+  }
+
+  return store;
+}
+```
+
+**Rules:**
+- ✅ Use `persist` for localStorage sync
+- ✅ ALWAYS create `-safe.ts` version for SSR
+- ✅ Stores contain ONLY state
+- ❌ NO business logic in stores (put in hooks)
+
+## Route Protection
+
+### Middleware Pattern
+
+```typescript
+// middleware.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Admin routes protection
+  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
+    const token = request.cookies.get('admin_token')?.value;
+    
+    if (!token) {
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+  }
+
+  // Profile routes protection
+  if (pathname.match(/^\/profile\/[^\/]+$/)) {
+    const response = NextResponse.next();
+    response.headers.set('x-protected-route', 'true');
+    return response;
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/admin/:path*', '/profile/:path*'],
+};
+```
+
+### Client-Side Guard Pattern
+
+```typescript
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/features/auth';
+
+export default function ProtectedPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Check authentication
+  if (!isLoading && !user) {
+    router.push('/login?redirect=' + pathname);
+    return null;
+  }
+
+  // Check authorization
+  if (user && !user.claimedProfile?.providerNPI) {
+    router.replace('/dashboard');
+    return null;
+  }
+
+  return <PageContent />;
+}
+```
+
+## TypeScript Patterns
+
+### Type Definitions
+
+**Domain Types** (`app/types/[domain].ts`):
+```typescript
+// types/provider.ts
+export interface Provider {
+  id: string;
+  npi: string;
+  firstName: string;
+  lastName: string;
+  specialties: Specialty[];
+}
+
+export interface Specialty {
+  code: string;
+  description: string;
+}
+```
+
+**Feature Types** (`features/[feature]/model/types.ts`):
+```typescript
+// features/auth/model/types.ts
+export interface User {
+  id: string;
+  email: string;
+  claimedProfile: ClaimedProfile | null;
+}
+
+export interface ClaimedProfile {
+  providerNPI: string;
+  verificationStatus: 'pending' | 'verified' | 'rejected';
+}
+```
+
+### Zod Validation
+
+ALWAYS use Zod for:
+- Form validation
+- API request validation
+- Runtime type checking
+
+```typescript
+// shared/schemas/provider-schema.ts
+import { z } from 'zod';
+
+export const ProviderSchema = z.object({
+  npi: z.string().length(10, 'NPI must be 10 digits'),
+  firstName: z.string().min(1, 'First name required'),
+  lastName: z.string().min(1, 'Last name required'),
+  email: z.string().email('Invalid email'),
+  phone: z.string().regex(/^\d{10}$/, 'Invalid phone'),
+});
+
+export type ProviderFormData = z.infer<typeof ProviderSchema>;
+
+// Usage in API route
+export async function POST(request: Request) {
+  const body = await request.json();
+  
+  const result = ProviderSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.flatten() },
+      { status: 400 }
+    );
+  }
+  
+  // result.data is typed and validated
+  const validData = result.data;
+}
+```
+
+**Rules:**
+- ✅ Enable `strict: true` in tsconfig
+- ✅ Use Zod for all validation
+- ✅ Use `interface` for objects, `type` for unions
+- ✅ Use `z.infer<typeof Schema>` for types
+- ❌ NEVER use `any`
+- ❌ NO implicit `any`
+
+## Styling with Tailwind
+
+### Component Styling
+
+ALWAYS use Tailwind utility classes. NO custom CSS.
+
+```typescript
+// ✅ GOOD: Utility classes
+export function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border bg-card p-6 shadow-sm">
+      {children}
+    </div>
+  );
+}
+
+// ✅ GOOD: Conditional with cn()
+import { cn } from '@/lib/utils';
+
+interface ButtonProps {
+  variant?: 'default' | 'outline';
+  className?: string;
+}
+
+export function Button({ variant = 'default', className, ...props }: ButtonProps) {
+  return (
+    <button
+      className={cn(
+        'inline-flex items-center justify-center rounded-md px-4 py-2',
+        variant === 'default' && 'bg-primary text-primary-foreground',
+        variant === 'outline' && 'border border-input bg-background',
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+// ❌ BAD: Inline styles
+<div style={{ padding: '16px' }}>Content</div>
+
+// ❌ BAD: Custom CSS classes
+<div className="custom-card">Content</div>
+```
+
+**Rules:**
+- ✅ Use Tailwind utilities ONLY
+- ✅ Use `cn()` helper for conditional classes
+- ✅ Compose with className prop
+- ❌ NO inline styles (except truly dynamic values)
+- ❌ NO custom CSS files
+
+## Naming Conventions
+
+### Files
+
+```
+DoctorCard.tsx                    # PascalCase for components
+use-providers.ts                  # kebab-case with use- prefix for hooks
+organization-setup-store.ts       # kebab-case for stores
+url-utils.ts                      # kebab-case for utilities
+provider.ts                       # kebab-case for types
+page.tsx                          # Next.js convention
+route.ts                          # Next.js API routes
+```
+
+### Code
+
+```typescript
+// Variables & functions: camelCase
+const userName = 'John';
+const isAuthenticated = true;
+function fetchUserData() {}
+
+// Components: PascalCase
+function UserProfile() {}
+function DoctorCard() {}
+
+// Constants: UPPER_SNAKE_CASE
+const API_BASE_URL = 'https://api.example.com';
+const MAX_RETRY_COUNT = 3;
+
+// Types & Interfaces: PascalCase
+interface User {}
+type Provider = {};
+```
+
+### Exports
+
+```typescript
+// ✅ Named exports for most things
+export function DoctorCard() {}
+export function useProviders() {}
+export const API_URL = '...';
+
+// ✅ Default export ONLY for Next.js pages
+export default function PhysiciansPage() {}
+
+// ✅ Type exports
+export type { Provider, Doctor };
+```
+
+## Import Order
+
+ALWAYS order imports like this:
+
+```typescript
+// 1. React and Next.js
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+// 2. External libraries
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
+
+// 3. Features and widgets (absolute imports)
+import { useAuth } from '@/app/features/auth';
+import { MainNavigation } from '@/app/widgets';
+
+// 4. Shared (absolute imports)
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+// 5. Types
+import type { User, Provider } from '@/app/types';
+
+// 6. Relative imports
+import { DoctorCard } from './doctor-card';
+```
+
+## Security Rules
+
+### Authentication
+
+```typescript
+// ✅ GOOD: Server-side validation in middleware
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value;
+  
+  if (!token) {
+    return NextResponse.redirect(new URL('/admin/login', request.url));
+  }
+  
+  // Verify JWT token here
+  return NextResponse.next();
+}
+
+// ❌ BAD: Client-only checks (insecure)
+if (!localStorage.getItem('token')) {
+  router.push('/login');
+}
+```
+
+### Environment Variables
+
+```typescript
+// ✅ GOOD: Environment variables
+const apiKey = process.env.STRIPE_SECRET_KEY;        // Server-only
+const publicUrl = process.env.NEXT_PUBLIC_BASE_URL;  // Client-safe
+
+// ❌ BAD: Hardcoded secrets
+const apiKey = 'sk_test_12345...';
+```
+
+### Input Validation
+
+ALWAYS validate with Zod:
+
+```typescript
+export async function POST(request: Request) {
+  const body = await request.json();
+  
+  const result = Schema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.flatten() },
+      { status: 400 }
+    );
+  }
+  
+  // Proceed with validated data
+}
+```
+
+## Common Pitfalls
+
+### ❌ NEVER Do This
+
+```typescript
+// 1. localStorage in artifacts
+localStorage.setItem('key', 'value');
+
+// 2. Features importing other features
+import { useProfile } from '@/app/features/profile'; // from auth feature
+
+// 3. Business logic in components
+export function UserList() {
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    fetch('/api/users').then(res => res.json()).then(setUsers);
+  }, []);
+}
+
+// 4. Direct feature internal imports
+import { loginUser } from '@/app/features/auth/api/auth-api';
+
+// 5. any types
+function fetchData(): Promise<any> {}
+```
+
+### ✅ Always Do This
+
+```typescript
+// 1. Use React state or Zustand
+const [value, setValue] = useState('');
+
+// 2. Import from shared instead
+import { apiClient } from '@/app/shared/api';
+
+// 3. Logic in hooks
+export function useUsers() {
+  return useQuery({ queryKey: ['users'], queryFn: fetchUsers });
+}
+
+export function UserList() {
+  const { data: users } = useUsers();
+  return <div>{users?.map(...)}</div>;
+}
+
+// 4. Use public API
+import { loginUser } from '@/app/features/auth';
+
+// 5. Explicit types
+function fetchData(): Promise<User[]> {}
+```
+
+## Code Generation Rules
+
+When generating code:
+
+1. **Always respect layer hierarchy** - Check imports before writing
+2. **Create features properly** - Include model/, api/, lib/, ui/, index.ts
+3. **Use React Query** - For all data fetching
+4. **Add Zod validation** - For forms and API routes
+5. **Use Server Components** - Unless interactivity needed
+6. **Create safe store hooks** - For SSR compatibility
+7. **Follow naming conventions** - File names and code style
+8. **Add error handling** - Try-catch in async functions
+9. **Use TypeScript strictly** - No any, explicit types
+10. **Export through index.ts** - For features and widgets
+
+## File Templates
+
+### Feature Hook Template
+
+```typescript
+// features/[feature]/lib/use-[feature].ts
+import { useQuery } from '@tanstack/react-query';
+
+export function use[Feature]() {
+  return useQuery({
+    queryKey: ['feature-name'],
+    queryFn: async () => {
+      const res = await fetch('/api/feature-endpoint');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+```
+
+### API Route Template
+
+```typescript
+// app/api/[endpoint]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    const param = request.nextUrl.searchParams.get('param');
+    
+    if (!param) {
+      return NextResponse.json(
+        { error: 'Param is required' },
+        { status: 400 }
+      );
+    }
+
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const response = await fetch(`${backendUrl}/endpoint?param=${param}`);
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch' },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+    
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Protected Page Template
+
+```typescript
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/features/auth';
+
+export default function ProtectedPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  if (!isLoading && !user) {
+    router.push('/login');
+    return null;
+  }
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div>
+      {/* Page content */}
+    </div>
+  );
+}
+```
+
+## Pre-Commit Checklist
+
+Before committing, verify:
+
+- [ ] Correct layer imports (no hierarchy violations)
+- [ ] `'use client'` only where needed
+- [ ] No `localStorage`/`sessionStorage`
+- [ ] TypeScript strict compliance
+- [ ] Try-catch for async operations
+- [ ] Named exports (except pages)
+- [ ] Zod validation for forms/API
+- [ ] React Query for data fetching
+- [ ] Business logic in hooks
+- [ ] Public API via `index.ts`
+- [ ] Tailwind classes only
+- [ ] Proper file naming
+- [ ] No hardcoded secrets
+- [ ] Error messages user-friendly
+
+## Development Workflow
+
+### Adding a Feature
+
+1. Create structure:
+```
+app/features/my-feature/
+├── model/types.ts
+├── api/my-feature-api.ts
+├── lib/use-my-feature.ts
+├── ui/my-feature-form.tsx
+└── index.ts
+```
+
+2. Define types in `model/types.ts`
+3. Create API client in `api/`
+4. Build hook in `lib/` with React Query
+5. Create UI in `ui/`
+6. Export public API in `index.ts`
+7. Use in route: `app/my-route/page.tsx`
+
+### Adding a Widget
+
+1. Create: `app/widgets/category/my-widget.tsx`
+2. Import from features/shared
+3. Export through `app/widgets/index.ts`
+
+### Adding an API Route
+
+1. Create: `app/api/my-endpoint/route.ts`
+2. Implement handler with validation
+3. Create hook in `app/hooks/use-my-endpoint.ts`
+
+## Remember
+
+You are building a production-grade Next.js application with:
+- **Feature-Sliced Design** - Strict layer separation
+- **Server-First** - Default to Server Components
+- **Type Safety** - TypeScript strict + Zod
+- **Data Fetching** - React Query for everything
+- **State Management** - Zustand for global state
+- **Styling** - Tailwind utility-first
+- **Security** - Server-side validation
+
+Always check layer hierarchy, use public APIs, and follow patterns. When in doubt, ask or check existing code.

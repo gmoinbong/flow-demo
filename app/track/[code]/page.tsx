@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getAllocations, saveAllocation } from '@/lib/auth';
-import { Card, CardContent } from '@/components/ui/card';
+import { getAllocations, saveAllocation } from '@/app/features/campaigns';
+import { Card, CardContent } from '@/app/shared/ui/card';
 import { Loader2 } from 'lucide-react';
 
 export default function TrackingPage() {
