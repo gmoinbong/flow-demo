@@ -1,5 +1,11 @@
 export type UserRole = 'brand' | 'creator';
 
+export interface ClaimedProfile {
+  providerNPI?: string;
+  verificationStatus?: 'pending' | 'verified' | 'rejected';
+  [key: string]: unknown;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -19,5 +25,7 @@ export interface User {
     youtube?: number;
   };
   onboardingComplete?: boolean;
+  // Auth-specific fields
+  claimedProfile?: ClaimedProfile;
 }
 

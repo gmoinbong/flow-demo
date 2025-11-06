@@ -15,7 +15,7 @@ import {
 } from '@/app/shared/ui/select';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
-import { setCurrentUser } from '@/app/features/auth';
+import { useRegister } from '@/app/features/auth';
 import type { UserRole } from '@/app/types';
 import { RadioGroup, RadioGroupItem } from '@/app/shared/ui/radio-group';
 
@@ -31,9 +31,8 @@ export function SignupForm() {
     role: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
+  const registerMutation = useRegister();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,23 +42,21 @@ export function SignupForm() {
       return;
     }
 
-    setIsLoading(true);
-
-    // Mock signup - in real app, this would call your auth service
-    setTimeout(() => {
-      const user = {
-        id: `user_${Date.now()}`,
+    registerMutation.mutate(
+      {
         email: formData.email,
-        name: `${formData.firstName} ${formData.lastName}`,
-        role: formData.accountType as UserRole,
-        company: formData.company,
-        companySize: formData.companySize,
-        jobRole: formData.role,
-        onboardingComplete: false,
-      };
-      setCurrentUser(user);
-      router.push('/onboarding');
-    }, 1000);
+        password: formData.password,
+      },
+      {
+        onSuccess: () => {
+          router.push('/onboarding');
+        },
+        onError: (error) => {
+          console.error('Registration failed:', error);
+          alert('Registration failed. Please try again.');
+        },
+      }
+    );
   };
 
   const handleGoogleSignup = async () => {
@@ -68,21 +65,9 @@ export function SignupForm() {
       return;
     }
 
-    setIsGoogleLoading(true);
-
-    // Mock Google OAuth flow
-    setTimeout(() => {
-      const user = {
-        id: `user_${Date.now()}`,
-        email: 'newuser@gmail.com',
-        name: 'Google New User',
-        role: formData.accountType as UserRole,
-        company: 'Google Startup',
-        onboardingComplete: false,
-      };
-      setCurrentUser(user);
-      router.push('/onboarding');
-    }, 1500);
+    // TODO: Implement OAuth flow
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    window.location.href = `${backendUrl}/auth/oauth/google/initiate`;
   };
 
   const updateFormData = (field: string, value: string) => {
@@ -157,7 +142,7 @@ export function SignupForm() {
         variant='outline'
         className='w-full bg-transparent'
         onClick={handleGoogleSignup}
-        disabled={isGoogleLoading || isLoading || !formData.accountType}
+        disabled={registerMutation.isPending || !formData.accountType}
       >
         <svg className='mr-2 h-4 w-4' viewBox='0 0 24 24'>
           <path
@@ -177,7 +162,7 @@ export function SignupForm() {
             d='M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z'
           />
         </svg>
-        {isGoogleLoading ? 'Signing up with Google...' : 'Continue with Google'}
+        Continue with Google
       </Button>
 
       <div className='relative'>
@@ -311,9 +296,9 @@ export function SignupForm() {
         <Button
           type='submit'
           className='w-full'
-          disabled={isLoading || !formData.accountType}
+          disabled={registerMutation.isPending || !formData.accountType}
         >
-          {isLoading ? 'Creating account...' : 'Create account'}
+          {registerMutation.isPending ? 'Creating account...' : 'Create account'}
         </Button>
 
         <p className='text-xs text-muted-foreground text-center'>

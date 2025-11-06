@@ -6,53 +6,40 @@ import { useState } from 'react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
-import { setCurrentUser } from '@/app/features/auth';
+import { useLogin } from '@/app/features/auth';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const loginMutation = useLogin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    // Mock authentication - in real app, this would call your auth service
-    setTimeout(() => {
-      const user = {
-        id: `user_${Date.now()}`,
-        email,
-        name: 'Demo User',
-        role: 'brand' as const,
-        company: 'Demo Company',
-        onboardingComplete: true,
-      };
-      setCurrentUser(user);
-      router.push('/dashboard');
-    }, 1000);
+    
+    loginMutation.mutate(
+      { email, password },
+      {
+        onSuccess: () => {
+          const redirect = searchParams.get('redirect') || '/dashboard';
+          router.push(redirect);
+        },
+        onError: (error) => {
+          console.error('Login failed:', error);
+          alert('Login failed. Please check your credentials.');
+        },
+      }
+    );
   };
 
   const handleGoogleSignin = async () => {
-    setIsGoogleLoading(true);
-
-    // Mock Google OAuth flow
-    setTimeout(() => {
-      const user = {
-        id: `user_${Date.now()}`,
-        email: 'user@gmail.com',
-        name: 'Google User',
-        role: 'brand' as const,
-        company: 'Google Company',
-        onboardingComplete: true,
-      };
-      setCurrentUser(user);
-      router.push('/dashboard');
-    }, 1500);
+    // TODO: Implement OAuth flow
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    window.location.href = `${backendUrl}/auth/oauth/google/initiate`;
   };
 
   return (
@@ -62,7 +49,7 @@ export function LoginForm() {
         variant='outline'
         className='w-full bg-transparent'
         onClick={handleGoogleSignin}
-        disabled={isGoogleLoading || isLoading}
+        disabled={loginMutation.isPending}
       >
         <svg className='mr-2 h-4 w-4' viewBox='0 0 24 24'>
           <path
@@ -82,7 +69,7 @@ export function LoginForm() {
             d='M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z'
           />
         </svg>
-        {isGoogleLoading ? 'Signing in with Google...' : 'Continue with Google'}
+        Continue with Google
       </Button>
 
       <div className='relative'>
@@ -142,8 +129,12 @@ export function LoginForm() {
           </Button>
         </div>
 
-        <Button type='submit' className='w-full' disabled={isLoading}>
-          {isLoading ? 'Signing in...' : 'Sign in'}
+        <Button
+          type='submit'
+          className='w-full'
+          disabled={loginMutation.isPending}
+        >
+          {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
         </Button>
       </form>
     </div>

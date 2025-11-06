@@ -1,13 +1,28 @@
 // Public API for auth feature
-export { useAuth, useLogin, useLogout, useIsAuthenticated } from './lib/use-auth';
+export {
+  useAuth,
+  useLogin,
+  useRegister,
+  useLogout,
+  useRefreshToken,
+} from './lib/use-auth';
 export { LoginForm } from './ui/login-form';
 export { SignupForm } from './ui/signup-form';
 export {
   getCurrentUser,
   setCurrentUser,
+  getCachedUser,
+  setCachedUser,
+  clearAuthCache,
   logout,
   isAuthenticated,
   requireAuth,
+  login,
+  register,
+  logoutUser,
+  getCurrentUserFromApi,
+  refreshAccessToken,
 } from './lib/auth-api';
-export type { User, UserRole } from '@/app/types';
+export type { User, UserRole, ClaimedProfile } from '@/app/types';
+export type { LoginCredentials, RegisterCredentials, AuthResponse } from './lib/auth-api';
 
