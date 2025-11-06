@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { LoginForm } from '@/app/features/auth';
 import { BarChart3 } from 'lucide-react';
 import Link from 'next/link';
@@ -26,7 +27,9 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <div className='bg-white rounded-lg shadow-sm border p-6'>
-          <LoginForm />
+          <Suspense fallback={<div className='text-center py-4'>Loading...</div>}>
+            <LoginForm />
+          </Suspense>
 
           <div className='mt-6 text-center'>
             <p className='text-sm text-muted-foreground'>
