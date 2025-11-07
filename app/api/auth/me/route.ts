@@ -31,7 +31,7 @@ async function refreshTokens(
   }
 }
 
-export async function fetchUserData(
+async function fetchUserData(
   accessToken: string,
   backendUrl: string
 ): Promise<unknown> {
