@@ -1,17 +1,10 @@
 'use client';
 
 import { Button } from '@/app/shared/ui/button';
-import { BarChart3, Bell, Plus, Search, User } from 'lucide-react';
+import { BarChart3, Bell, Plus, Search } from 'lucide-react';
 import { Input } from '@/app/shared/ui/input';
 import Link from 'next/link';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/shared/ui/dropdown-menu';
+import { UserMenu } from '@/app/features/auth';
 
 export function DashboardHeader() {
   return (
@@ -54,21 +47,7 @@ export function DashboardHeader() {
               <Bell className='w-5 h-5' />
             </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant='ghost' size='sm'>
-                  <User className='w-5 h-5' />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end'>
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Sign out</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <UserMenu />
           </div>
         </div>
       </div>
