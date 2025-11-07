@@ -26,9 +26,9 @@ const _sourceSerif_4 = V0_Font_Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'Creator flow',
+  description: 'Creator flow',
+  generator: 'creatorflow.com',
 };
 
 export default function RootLayout({
