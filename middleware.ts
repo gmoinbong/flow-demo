@@ -3,6 +3,13 @@ import { ACCESS_TOKEN_COOKIE } from '@/app/shared/lib/cookie-utils';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+
+  // Pass token to API routes via header
+  const requestHeaders = new Headers(request.headers);
+  if (accessToken && pathname.startsWith('/api/')) {
+    requestHeaders.set('x-access-token', accessToken);
+  }
 
   // Protected routes
   const protectedRoutes = [
@@ -24,8 +31,6 @@ export function middleware(request: NextRequest) {
   );
 
   if (isProtectedRoute) {
-    const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-
     if (!accessToken) {
       // Redirect to login with return URL
       const loginUrl = new URL('/login', request.url);
@@ -36,8 +41,6 @@ export function middleware(request: NextRequest) {
 
   // Redirect from /login if already authenticated
   if (pathname === '/login' || pathname.startsWith('/login')) {
-    const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-    
     if (accessToken) {
       return NextResponse.redirect(new URL('/physicians', request.url));
     }
@@ -52,7 +55,11 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
@@ -64,6 +71,7 @@ export const config = {
     '/reports/:path*',
     '/creator/:path*',
     '/admin/:path*',
+    '/api/:path*',
   ],
 };
 

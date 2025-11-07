@@ -20,7 +20,7 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     loginMutation.mutate(
       { email, password },
       {
@@ -28,7 +28,7 @@ export function LoginForm() {
           const redirect = searchParams.get('redirect') || '/dashboard';
           router.push(redirect);
         },
-        onError: (error) => {
+        onError: error => {
           console.error('Login failed:', error);
           alert('Login failed. Please check your credentials.');
         },
@@ -37,8 +37,7 @@ export function LoginForm() {
   };
 
   const handleGoogleSignin = async () => {
-    // TODO: Implement OAuth flow
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL as string;
     window.location.href = `${backendUrl}/auth/oauth/google/initiate`;
   };
 

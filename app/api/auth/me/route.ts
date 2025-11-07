@@ -31,27 +31,16 @@ async function refreshTokens(
   }
 }
 
-async function fetchUserData(
+export async function fetchUserData(
   accessToken: string,
   backendUrl: string
 ): Promise<unknown> {
-  // Try /profile/me first, then /users/me
-  let response = await fetch(`${backendUrl}/profile/me`, {
+  let response = await fetch(`${backendUrl}/auth/me`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
-
-  if (!response.ok && response.status === 404) {
-    // Fallback to /users/me
-    response = await fetch(`${backendUrl}/users/me`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-  }
 
   if (!response.ok) {
     const error = new Error(`Failed to fetch user: ${response.status}`);
@@ -65,104 +54,94 @@ async function fetchUserData(
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    let accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+
+    let accessToken = request.headers.get('x-access-token');
 
     if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    if (!accessToken) {
+      const authHeader = request.headers.get('Authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        accessToken = authHeader.substring(7);
+      }
+    }
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL as string;
     let userData: unknown;
     let fetchError: Error | null = null;
 
     try {
       userData = await fetchUserData(accessToken, backendUrl);
     } catch (error) {
-      fetchError = error instanceof Error ? error : new Error('Failed to fetch user');
+      fetchError =
+        error instanceof Error ? error : new Error('Failed to fetch user');
     }
 
-    // If fetch failed, try to refresh token
     if (fetchError) {
+      const errorStatus = (fetchError as Error & { status?: number }).status;
+      if (errorStatus === 404) {
+        console.error('User endpoint not found (404), but token is valid');
+        return NextResponse.json(
+          { error: 'User endpoint not found' },
+          { status: 404 }
+        );
+      }
+
       const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value;
       if (refreshToken) {
         const refreshData = await refreshTokens(refreshToken, backendUrl);
-        
+
         if (refreshData) {
-          // Retry with new token
           try {
             userData = await fetchUserData(refreshData.accessToken, backendUrl);
             accessToken = refreshData.accessToken;
 
-            // Update tokens in response
             const nextResponse = NextResponse.json(
               transformUserData(userData as never)
             );
-            
-            nextResponse.cookies.set(ACCESS_TOKEN_COOKIE, refreshData.accessToken, {
-              ...COOKIE_OPTIONS,
-              maxAge: ACCESS_TOKEN_MAX_AGE,
-            });
+
+            nextResponse.cookies.set(
+              ACCESS_TOKEN_COOKIE,
+              refreshData.accessToken,
+              {
+                ...COOKIE_OPTIONS,
+                maxAge: ACCESS_TOKEN_MAX_AGE,
+              }
+            );
 
             if (refreshData.refreshToken) {
-              nextResponse.cookies.set(REFRESH_TOKEN_COOKIE, refreshData.refreshToken, {
-                ...COOKIE_OPTIONS,
-                maxAge: REFRESH_TOKEN_MAX_AGE,
-              });
+              nextResponse.cookies.set(
+                REFRESH_TOKEN_COOKIE,
+                refreshData.refreshToken,
+                {
+                  ...COOKIE_OPTIONS,
+                  maxAge: REFRESH_TOKEN_MAX_AGE,
+                }
+              );
             }
 
             return nextResponse;
           } catch (retryError) {
-            // Refresh failed, clear cookies
-            const errorResponse = NextResponse.json(
-              { error: 'Unauthorized' },
-              { status: 401 }
+            console.error('Retry after refresh failed:', retryError);
+            return NextResponse.json(
+              { error: 'Failed to fetch user data' },
+              { status: 500 }
             );
-            errorResponse.cookies.delete(ACCESS_TOKEN_COOKIE);
-            errorResponse.cookies.delete(REFRESH_TOKEN_COOKIE);
-            return errorResponse;
           }
         }
       }
 
-      // Refresh failed or no refresh token, clear cookies
-      const errorResponse = NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-      errorResponse.cookies.delete(ACCESS_TOKEN_COOKIE);
-      errorResponse.cookies.delete(REFRESH_TOKEN_COOKIE);
-      return errorResponse;
+      console.error('Auth error, refresh failed or no refresh token');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Transform and return user data
     const user = transformUserData(userData as never);
-
-    // If user has claimedProfile.providerNPI, load provider data
-    if (user.claimedProfile?.providerNPI) {
-      try {
-        const providerResponse = await fetch(
-          `${backendUrl}/providers/by-npi?npi=${user.claimedProfile.providerNPI}`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
-
-        if (providerResponse.ok) {
-          const providerData = await providerResponse.json();
-          // Merge provider data if needed
-          // user.provider = providerData;
-        }
-      } catch (providerError) {
-        // Provider data loading is optional, don't fail the request
-        console.error('Failed to load provider data:', providerError);
-      }
-    }
 
     return NextResponse.json(user);
   } catch (error) {
@@ -173,4 +152,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

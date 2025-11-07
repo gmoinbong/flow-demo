@@ -51,7 +51,7 @@ export function SignupForm() {
         onSuccess: () => {
           router.push('/onboarding');
         },
-        onError: (error) => {
+        onError: error => {
           console.error('Registration failed:', error);
           alert('Registration failed. Please try again.');
         },
@@ -65,8 +65,7 @@ export function SignupForm() {
       return;
     }
 
-    // TODO: Implement OAuth flow
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL as string;
     window.location.href = `${backendUrl}/auth/oauth/google/initiate`;
   };
 
@@ -298,7 +297,9 @@ export function SignupForm() {
           className='w-full'
           disabled={registerMutation.isPending || !formData.accountType}
         >
-          {registerMutation.isPending ? 'Creating account...' : 'Create account'}
+          {registerMutation.isPending
+            ? 'Creating account...'
+            : 'Create account'}
         </Button>
 
         <p className='text-xs text-muted-foreground text-center'>

@@ -1,5 +1,6 @@
 import type { User, UserRole } from '@/app/types';
-import { handleApiResponse } from '@/app/shared/api/api-client';
+import { nextApiClient } from '@/app/shared/api/api-client';
+import { AuthStorage } from '@/app/shared/lib/auth-storage';
 
 export interface LoginCredentials {
   email: string;
@@ -82,15 +83,13 @@ export function requireAuth(role?: UserRole): User {
 }
 
 // API functions - all use cookies, no client-side token storage
-export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
-  const response = await fetch('/api/auth/login', {
+export async function login(
+  credentials: LoginCredentials
+): Promise<AuthResponse> {
+  const data = await nextApiClient<AuthResponse>('/api/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(credentials),
   });
-
-  const data = await handleApiResponse<AuthResponse>(response);
 
   // Cache user data for fast initial render
   if (typeof window !== 'undefined' && data.user) {
@@ -103,21 +102,19 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
 export async function register(
   credentials: RegisterCredentials
 ): Promise<{ user: { id: string; email: string } }> {
-  const response = await fetch('/api/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(credentials),
-  });
-
-  return handleApiResponse(response);
+  return nextApiClient<{ user: { id: string; email: string } }>(
+    '/api/auth/register',
+    {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }
+  );
 }
 
 export async function logoutUser(): Promise<void> {
   try {
-    await fetch('/api/auth/logout', {
+    await nextApiClient('/api/auth/logout', {
       method: 'POST',
-      credentials: 'include',
     });
   } catch (error) {
     console.error('Logout error:', error);
@@ -128,24 +125,14 @@ export async function logoutUser(): Promise<void> {
 
 export async function getCurrentUserFromApi(): Promise<User | null> {
   try {
-    const response = await fetch('/api/auth/me', {
-      method: 'GET',
-      credentials: 'include',
+    // Try to get token from sessionStorage as fallback (if available)
+    const token = typeof window !== 'undefined' ? AuthStorage.getAccessToken() : null;
+
+    const user = await nextApiClient<User>('/api/auth/me', {
+      ...(token && { token }),
     });
 
-    if (!response.ok) {
-      // If 401, refresh is handled automatically by API route
-      if (response.status === 401) {
-        clearAuthCache();
-        return null;
-      }
-      return null;
-    }
-
-    const user = await response.json() as User;
-
-    // Cache user data
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && user) {
       setCachedUser(user);
     }
 
@@ -159,16 +146,9 @@ export async function getCurrentUserFromApi(): Promise<User | null> {
 
 export async function refreshAccessToken(): Promise<boolean> {
   try {
-    const response = await fetch('/api/auth/refresh', {
+    await nextApiClient('/api/auth/refresh', {
       method: 'POST',
-      credentials: 'include',
     });
-
-    if (!response.ok) {
-      clearAuthCache();
-      return false;
-    }
-
     return true;
   } catch (error) {
     console.error('Refresh token error:', error);

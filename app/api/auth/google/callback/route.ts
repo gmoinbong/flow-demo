@@ -61,6 +61,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Validate that tokens exist in response
+    if (!authData.accessToken || !authData.refreshToken) {
+      console.error('OAuth response missing tokens:', { 
+        hasAccessToken: !!authData.accessToken,
+        hasRefreshToken: !!authData.refreshToken,
+        dataKeys: Object.keys(authData),
+      });
+      return NextResponse.redirect(
+        new URL('/login?error=oauth_invalid_response', request.url)
+      );
+    }
+
     // Transform user data
     const user = transformUserData(authData.user as never);
 

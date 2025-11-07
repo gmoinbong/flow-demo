@@ -11,9 +11,8 @@ export async function POST(request: NextRequest) {
     const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
     const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value;
 
-    // Optionally invalidate refresh token on backend
     if (accessToken && refreshToken) {
-      const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const backendUrl = process.env.NEXT_PUBLIC_BASE_URL as string;
       try {
         await fetch(`${backendUrl}/auth/logout`, {
           method: 'POST',
@@ -24,12 +23,10 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ refreshToken }),
         });
       } catch (error) {
-        // Continue with logout even if backend call fails
         console.error('Backend logout error:', error);
       }
     }
 
-    // Clear cookies
     const response = NextResponse.json({ message: 'Logged out successfully' });
     response.cookies.delete(ACCESS_TOKEN_COOKIE);
     response.cookies.delete(REFRESH_TOKEN_COOKIE);
@@ -37,11 +34,9 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Logout API Error:', error);
-    // Still clear cookies even if backend call fails
     const response = NextResponse.json({ message: 'Logged out successfully' });
     response.cookies.delete(ACCESS_TOKEN_COOKIE);
     response.cookies.delete(REFRESH_TOKEN_COOKIE);
     return response;
   }
 }
-

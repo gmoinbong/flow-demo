@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import type { User } from '@/app/types';
 import {
   login,
   register,
@@ -16,12 +15,13 @@ import {
 import type { LoginCredentials, RegisterCredentials } from './auth-api';
 
 export function useAuth() {
-  const queryClient = useQueryClient();
-
-  // Get cached user for instant initial render
   const cachedUser = typeof window !== 'undefined' ? getCachedUser() : null;
 
-  const { data: user, isLoading, error } = useQuery({
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['auth', 'user'],
     queryFn: getCurrentUserFromApi,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -29,17 +29,14 @@ export function useAuth() {
     retry: 1,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
-    // Use cached user as initial data and placeholder
     initialData: cachedUser || undefined,
     placeholderData: cachedUser || undefined,
   });
 
-  // Update cache when user data changes
   useEffect(() => {
     if (user && typeof window !== 'undefined') {
       setCachedUser(user);
     } else if (!user && !isLoading && typeof window !== 'undefined') {
-      // Clear cache if user is null and not loading
       setCachedUser(null);
     }
   }, [user, isLoading]);
@@ -54,18 +51,15 @@ export function useAuth() {
 
 export function useLogin() {
   const queryClient = useQueryClient();
-  const router = useRouter();
-
   return useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
       return login(credentials);
     },
-    onSuccess: (data) => {
-      // Update React Query cache
+    onSuccess: data => {
       queryClient.setQueryData(['auth', 'user'], data.user);
       queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Login error:', error);
     },
   });
@@ -73,17 +67,15 @@ export function useLogin() {
 
 export function useRegister() {
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   return useMutation({
     mutationFn: async (credentials: RegisterCredentials) => {
       return register(credentials);
     },
     onSuccess: () => {
-      // After registration, automatically login
       queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Register error:', error);
     },
   });
@@ -98,14 +90,12 @@ export function useLogout() {
       await logoutUser();
     },
     onSuccess: () => {
-      // Clear React Query cache
       queryClient.setQueryData(['auth', 'user'], null);
       queryClient.clear();
       router.push('/login');
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Logout error:', error);
-      // Still clear cache even on error
       queryClient.setQueryData(['auth', 'user'], null);
       queryClient.clear();
       router.push('/login');
@@ -120,9 +110,8 @@ export function useRefreshToken() {
     mutationFn: async () => {
       return refreshAccessToken();
     },
-    onSuccess: (success) => {
+    onSuccess: success => {
       if (success) {
-        // Invalidate auth queries to refetch with new token
         queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
       }
     },

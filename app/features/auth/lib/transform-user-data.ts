@@ -1,8 +1,3 @@
-/**
- * Transform user data from backend to frontend format
- * Handles different backend response formats (MongoDB _id, different field names)
- */
-
 import type { User } from '@/app/types';
 
 interface BackendUser {
@@ -22,11 +17,7 @@ interface BackendUser {
   [key: string]: unknown;
 }
 
-/**
- * Transform backend user data to frontend User format
- */
 export function transformUserData(backendUser: BackendUser): User {
-  // Handle MongoDB _id format
   let id = backendUser.id;
   if (!id && backendUser._id) {
     if (typeof backendUser._id === 'string') {
@@ -54,13 +45,6 @@ export function transformUserData(backendUser: BackendUser): User {
     }
   }
 
-  // Determine isPhysician (for claimedProfile check)
-  const isPhysician = !!(
-    backendUser.claimedProfile?.providerNPI ||
-    backendUser.role === 'physician' ||
-    backendUser.role === 'doctor'
-  );
-
   return {
     id,
     email: backendUser.email,
@@ -83,4 +67,3 @@ export function transformUserData(backendUser: BackendUser): User {
     onboardingComplete: backendUser.onboardingComplete as boolean | undefined,
   };
 }
-

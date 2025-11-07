@@ -17,8 +17,7 @@ const LoginSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // Validate input
+
     const result = LoginSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
@@ -27,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL as string;
     const response = await fetch(`${backendUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -38,18 +37,33 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.message || 'Login failed' },
+        {
+          error: data.message || data.error || 'Login failed',
+          statusCode: response.status,
+        },
         { status: response.status }
       );
     }
 
-    // Transform user data
+    if (!data.accessToken || !data.refreshToken) {
+      console.error('Login response missing tokens:', {
+        hasAccessToken: !!data.accessToken,
+        hasRefreshToken: !!data.refreshToken,
+        dataKeys: Object.keys(data),
+      });
+      return NextResponse.json(
+        {
+          error: 'Invalid response from authentication server',
+          statusCode: 500,
+        },
+        { status: 500 }
+      );
+    }
+
     const user = transformUserData(data.user);
 
-    // Set tokens in httpOnly cookies
     const nextResponse = NextResponse.json({ user });
-    
-    // Access token in httpOnly cookie
+
     nextResponse.cookies.set(ACCESS_TOKEN_COOKIE, data.accessToken, {
       ...COOKIE_OPTIONS,
       maxAge: ACCESS_TOKEN_MAX_AGE,
@@ -70,4 +84,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
