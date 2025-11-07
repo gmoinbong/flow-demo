@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
@@ -15,7 +15,7 @@ import {
 } from '@/app/shared/ui/select';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
-import { useRegister } from '@/app/features/auth';
+import { useRegister, useAuth } from '@/app/features/auth';
 import type { UserRole } from '@/app/types';
 import { RadioGroup, RadioGroupItem } from '@/app/shared/ui/radio-group';
 
@@ -30,33 +30,76 @@ export function SignupForm() {
     companySize: '',
     role: '',
   });
+  console.log(formData);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const registerMutation = useRegister();
+  const { user, isLoading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, isLoading, router]);
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className='space-y-6'>
+        <div className='text-center py-4 text-muted-foreground'>
+          Checking authentication...
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate required fields
     if (!formData.accountType) {
       alert('Please select an account type');
       return;
     }
 
-    registerMutation.mutate(
-      {
-        email: formData.email,
-        password: formData.password,
+    // Trim and validate firstName and lastName
+    const trimmedFirstName = formData.firstName.trim();
+    const trimmedLastName = formData.lastName.trim();
+
+    if (!trimmedFirstName || !trimmedLastName) {
+      alert('First name and last name are required');
+      return;
+    }
+
+    if (formData.accountType === 'brand' && !formData.company?.trim()) {
+      alert('Company name is required for brand accounts');
+      return;
+    }
+
+    const registrationData = {
+      email: formData.email.trim(),
+      password: formData.password,
+      role: formData.accountType,
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
+      // Brand-specific fields
+      ...(formData.accountType === 'brand' && {
+        company: formData.company?.trim(),
+        companySize: formData.companySize,
+        userRole: formData.role,
+      }),
+    };
+
+    registerMutation.mutate(registrationData, {
+      onSuccess: () => {
+        router.push('/onboarding');
       },
-      {
-        onSuccess: () => {
-          router.push('/onboarding');
-        },
-        onError: error => {
-          console.error('Registration failed:', error);
-          alert('Registration failed. Please try again.');
-        },
-      }
-    );
+      onError: error => {
+        console.error('Registration failed:', error);
+        alert('Registration failed. Please try again.');
+      },
+    });
   };
 
   const handleGoogleSignup = async () => {

@@ -10,6 +10,13 @@ export interface LoginCredentials {
 export interface RegisterCredentials {
   email: string;
   password: string;
+  role: 'creator' | 'brand';
+  firstName?: string;
+  lastName?: string;
+  // Brand-specific fields
+  company?: string;
+  companySize?: string;
+  userRole?: string;
 }
 
 export interface AuthResponse {
@@ -101,14 +108,12 @@ export async function login(
 
 export async function register(
   credentials: RegisterCredentials
-): Promise<{ user: { id: string; email: string } }> {
-  return nextApiClient<{ user: { id: string; email: string } }>(
-    '/api/auth/register',
-    {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    }
-  );
+): Promise<AuthResponse> {
+  console.log('register credentials', credentials);
+  return nextApiClient<AuthResponse>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  });
 }
 
 export async function logoutUser(): Promise<void> {
@@ -126,7 +131,8 @@ export async function logoutUser(): Promise<void> {
 export async function getCurrentUserFromApi(): Promise<User | null> {
   try {
     // Try to get token from sessionStorage as fallback (if available)
-    const token = typeof window !== 'undefined' ? AuthStorage.getAccessToken() : null;
+    const token =
+      typeof window !== 'undefined' ? AuthStorage.getAccessToken() : null;
 
     const user = await nextApiClient<User>('/api/auth/me', {
       ...(token && { token }),

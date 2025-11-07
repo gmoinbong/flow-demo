@@ -11,6 +11,18 @@ export function middleware(request: NextRequest) {
     requestHeaders.set('x-access-token', accessToken);
   }
 
+  const isOAuthCallback = pathname.startsWith('/auth/callback');
+  const authPages = ['/login', '/signup'];
+  const isAuthPage =
+    !isOAuthCallback &&
+    authPages.some(page => pathname === page || pathname.startsWith(page));
+
+  if (isAuthPage && accessToken) {
+    const redirectUrl =
+      request.nextUrl.searchParams.get('redirect') || '/dashboard';
+    return NextResponse.redirect(new URL(redirectUrl, request.url));
+  }
+
   // Protected routes
   const protectedRoutes = [
     '/dashboard',
@@ -30,26 +42,17 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  if (isProtectedRoute) {
-    if (!accessToken) {
-      // Redirect to login with return URL
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
-  // Redirect from /login if already authenticated
-  if (pathname === '/login' || pathname.startsWith('/login')) {
-    if (accessToken) {
-      return NextResponse.redirect(new URL('/physicians', request.url));
-    }
+  if (isProtectedRoute && !accessToken) {
+    // Redirect to login with return URL
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Admin routes (if needed)
   if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
     const adminToken = request.cookies.get('admin_token')?.value;
-    
+
     if (!adminToken) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
@@ -69,9 +72,12 @@ export const config = {
     '/creators/:path*',
     '/payments/:path*',
     '/reports/:path*',
+    '/profile/:path*',
     '/creator/:path*',
     '/admin/:path*',
     '/api/:path*',
+    '/login/:path*',
+    '/signup/:path*',
+    '/auth/:path*',
   ],
 };
-

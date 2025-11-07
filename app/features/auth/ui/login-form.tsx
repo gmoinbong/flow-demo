@@ -2,13 +2,13 @@
 
 import type React from 'react';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
-import { useLogin } from '@/app/features/auth';
+import { useLogin, useAuth } from '@/app/features/auth';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -17,6 +17,26 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const loginMutation = useLogin();
+  const { user, isLoading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && user) {
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.replace(redirect);
+    }
+  }, [user, isLoading, router, searchParams]);
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className='space-y-6'>
+        <div className='text-center py-4 text-muted-foreground'>
+          Checking authentication...
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
