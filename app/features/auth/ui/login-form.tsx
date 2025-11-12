@@ -1,8 +1,6 @@
 'use client';
 
-import type React from 'react';
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
@@ -19,16 +17,23 @@ export function LoginForm() {
   const loginMutation = useLogin();
   const { user, isLoading } = useAuth();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (only once)
+  const hasRedirectedRef = React.useRef(false);
+  
   useEffect(() => {
-    if (!isLoading && user) {
+    // Only redirect if user is authenticated and we haven't redirected yet
+    if (!isLoading && user && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
       const redirect = searchParams.get('redirect') || '/dashboard';
+      // Use replace to avoid adding to history and prevent loops
       router.replace(redirect);
+      return; // Exit early to prevent further execution
     }
-  }, [user, isLoading, router, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isLoading]); // Removed router and searchParams from dependencies to prevent re-runs
 
-  // Show loading state while checking auth
-  if (isLoading) {
+  // Show loading state only on initial load, not on every render
+  if (isLoading && !hasRedirectedRef.current) {
     return (
       <div className='space-y-6'>
         <div className='text-center py-4 text-muted-foreground'>
@@ -36,6 +41,11 @@ export function LoginForm() {
         </div>
       </div>
     );
+  }
+  
+  // If redirecting, show nothing to prevent flash
+  if (hasRedirectedRef.current && user) {
+    return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

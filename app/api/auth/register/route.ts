@@ -43,12 +43,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    console.log('Received registration request:', body);
 
     // Validate input
     const result = RegisterSchema.safeParse(body);
     if (!result.success) {
-      console.log('Validation errors:', result.error.flatten().fieldErrors);
       return NextResponse.json(
         { error: result.error.flatten().fieldErrors },
         { status: 400 }

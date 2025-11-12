@@ -63,18 +63,6 @@ export function ContentApproval() {
   const [selectedContent, setSelectedContent] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
 
-  const handleApprove = (contentId: number) => {
-    console.log(`[v0] Approving content ${contentId}`);
-    // Handle approval logic
-  };
-
-  const handleReject = (contentId: number) => {
-    console.log(
-      `[v0] Rejecting content ${contentId} with feedback: ${feedback}`
-    );
-    // Handle rejection logic
-  };
-
   return (
     <div className='space-y-6'>
       <div className='flex items-center justify-between'>
@@ -227,17 +215,13 @@ export function ContentApproval() {
 
                       {/* Actions */}
                       <div className='flex space-x-3'>
-                        <Button
-                          className='flex-1'
-                          onClick={() => handleApprove(content.id)}
-                        >
+                        <Button className='flex-1'>
                           <Check className='w-4 h-4 mr-2' />
                           Approve
                         </Button>
                         <Button
                           variant='outline'
                           className='flex-1 bg-transparent'
-                          onClick={() => handleReject(content.id)}
                         >
                           <X className='w-4 h-4 mr-2' />
                           Request Changes

@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Card,
   CardContent,
@@ -7,32 +9,74 @@ import {
 } from '@/app/shared/ui/card';
 import { Badge } from '@/app/shared/ui/badge';
 import { Button } from '@/app/shared/ui/button';
+import { Skeleton } from '@/app/shared/ui/skeleton';
 import { Eye, Heart, MessageCircle } from 'lucide-react';
-
-const campaigns = [
-  {
-    id: 1,
-    name: 'Summer Collection Launch',
-    status: 'active',
-    creators: 12,
-    reach: '2.4M',
-    engagement: '4.2%',
-    budget: '$15,000',
-    spent: '$8,500',
-  },
-  {
-    id: 2,
-    name: 'Brand Awareness Q4',
-    status: 'draft',
-    creators: 0,
-    reach: '0',
-    engagement: '0%',
-    budget: '$25,000',
-    spent: '$0',
-  },
-];
+import { useCampaigns } from '@/app/features/campaigns';
+import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/app/shared/lib/utils';
 
 export function CampaignOverview() {
+  const { campaigns, isLoading } = useCampaigns();
+  const router = useRouter();
+
+  const formatBudget = (budget: number) => {
+    return formatCurrency(budget / 100); // Convert cents to dollars
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Campaigns</CardTitle>
+          <CardDescription>Monitor your campaign performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className='space-y-4'>
+            {[1, 2].map(i => (
+              <div
+                key={i}
+                className='flex items-center justify-between p-4 border rounded-lg'
+              >
+                <div className='flex-1 space-y-2'>
+                  <Skeleton className='h-5 w-48' />
+                  <Skeleton className='h-4 w-64' />
+                </div>
+                <div className='text-right space-y-2'>
+                  <Skeleton className='h-4 w-24' />
+                  <Skeleton className='h-8 w-24' />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (campaigns.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Campaigns</CardTitle>
+          <CardDescription>Monitor your campaign performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className='text-center py-8 text-muted-foreground'>
+            <p>No campaigns yet</p>
+            <Button
+              variant='outline'
+              size='sm'
+              className='mt-4'
+              onClick={() => router.push('/campaigns/new')}
+            >
+              Create Campaign
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -44,14 +88,18 @@ export function CampaignOverview() {
           {campaigns.map(campaign => (
             <div
               key={campaign.id}
-              className='flex items-center justify-between p-4 border rounded-lg'
+              className='flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors'
             >
               <div className='flex-1'>
                 <div className='flex items-center space-x-3 mb-2'>
                   <h3 className='font-semibold'>{campaign.name}</h3>
                   <Badge
                     variant={
-                      campaign.status === 'active' ? 'default' : 'secondary'
+                      campaign.status === 'active'
+                        ? 'default'
+                        : campaign.status === 'draft'
+                        ? 'secondary'
+                        : 'outline'
                     }
                   >
                     {campaign.status}
@@ -60,26 +108,23 @@ export function CampaignOverview() {
                 <div className='flex items-center space-x-6 text-sm text-muted-foreground'>
                   <span className='flex items-center'>
                     <Eye className='w-4 h-4 mr-1' />
-                    {campaign.reach} reach
+                    {campaign.platforms?.join(', ') || 'No platforms'}
                   </span>
                   <span className='flex items-center'>
                     <Heart className='w-4 h-4 mr-1' />
-                    {campaign.engagement} engagement
-                  </span>
-                  <span className='flex items-center'>
-                    <MessageCircle className='w-4 h-4 mr-1' />
-                    {campaign.creators} creators
+                    {campaign.goals?.join(', ') || 'No goals'}
                   </span>
                 </div>
               </div>
               <div className='text-right'>
                 <div className='text-sm font-medium'>
-                  {campaign.spent} / {campaign.budget}
+                  {formatBudget(campaign.budget || 0)}
                 </div>
                 <Button
                   variant='outline'
                   size='sm'
-                  className='mt-2 bg-transparent'
+                  className='mt-2'
+                  onClick={() => router.push(`/campaigns/${campaign.id}`)}
                 >
                   View Details
                 </Button>

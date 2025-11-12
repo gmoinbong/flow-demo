@@ -7,8 +7,12 @@ export function middleware(request: NextRequest) {
 
   // Pass token to API routes via header
   const requestHeaders = new Headers(request.headers);
-  if (accessToken && pathname.startsWith('/api/')) {
-    requestHeaders.set('x-access-token', accessToken);
+  if (pathname.startsWith('/api/')) {
+    if (accessToken) {
+      // Add both x-access-token (for backward compatibility) and Authorization header
+      requestHeaders.set('x-access-token', accessToken);
+      requestHeaders.set('Authorization', `Bearer ${accessToken}`);
+    }
   }
 
   const isOAuthCallback = pathname.startsWith('/auth/callback');

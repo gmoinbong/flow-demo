@@ -1,7 +1,21 @@
 import type { Campaign, CampaignAllocation } from '@/app/types';
-import { matchCreatorsForCampaign } from '@/app/features/creators/lib/creator-api';
+import { nextApiClient } from '@/app/shared/api/api-client';
 
-// Campaign helpers
+// Campaign API - fetch from backend
+// Cookies are automatically sent via credentials: 'include'
+// Middleware reads cookies and adds x-access-token header
+// API routes read token from cookies or x-access-token header
+export async function fetchCampaigns(): Promise<Campaign[]> {
+  const response = await nextApiClient<Campaign[]>('/api/campaigns');
+  return response;
+}
+
+export async function fetchCampaignById(id: string): Promise<Campaign> {
+  const response = await nextApiClient<Campaign>(`/api/campaigns/${id}`);
+  return response;
+}
+
+// Campaign helpers (legacy - for backward compatibility)
 export function getCampaigns(): Campaign[] {
   if (typeof window === 'undefined') return [];
   const campaignsStr = localStorage.getItem('campaigns');

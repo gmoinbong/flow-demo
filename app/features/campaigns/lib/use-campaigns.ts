@@ -1,36 +1,41 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/app/features/auth';
-import { getCampaignsByBrand, getAllocationsByCampaign } from './campaign-api';
+import { useAuth } from '@/app/features/auth';
+import { fetchCampaigns, fetchCampaignById, getAllocationsByCampaign } from './campaign-api';
 import type { Campaign } from '@/app/types';
 
 export function useCampaigns() {
-  const [user, setUser] = useState(getCurrentUser());
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!user || user.role !== 'brand') {
-      router.push('/login');
-      return;
-    }
+  // Memoize user role to prevent unnecessary re-renders
+  const userRole = useMemo(() => user?.role, [user?.role]);
+  const isBrand = userRole === 'brand';
 
-    const brandCampaigns = getCampaignsByBrand(user.id);
-    setCampaigns(brandCampaigns);
-  }, [user, router]);
+  const { data: campaigns = [], isLoading, error } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn: fetchCampaigns,
+    enabled: !!user && isBrand && !isAuthLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    refetchOnMount: false, // Prevent refetch on every mount
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+  });
+
+  // Redirect if not authenticated or not brand (only once)
+  useEffect(() => {
+    if (!isAuthLoading && user && !isBrand) {
+      router.push('/login');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBrand, isAuthLoading]); // Only depend on role and loading state
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
   const totalBudget = campaigns.reduce((sum, c) => {
-    const budgetStr = c.budget.toString();
-    if (budgetStr.includes('-')) {
-      const [min, max] = budgetStr
-        .split('-')
-        .map((s: string) => Number.parseInt(s.replace(/\D/g, '')));
-      return sum + (min + max) / 2;
-    }
-    return sum + (Number.parseInt(budgetStr.replace(/\D/g, '')) || 0);
+    return sum + (c.budget || 0);
   }, 0);
 
   const totalCreators = campaigns.reduce((sum, c) => {
@@ -40,9 +45,27 @@ export function useCampaigns() {
   return {
     user,
     campaigns,
+    isLoading,
+    error,
     activeCampaigns,
     totalBudget,
     totalCreators,
+  };
+}
+
+export function useCampaign(campaignId: string) {
+  const { data: campaign, isLoading, error } = useQuery({
+    queryKey: ['campaign', campaignId],
+    queryFn: () => fetchCampaignById(campaignId),
+    enabled: !!campaignId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
+
+  return {
+    campaign,
+    isLoading,
+    error,
   };
 }
 

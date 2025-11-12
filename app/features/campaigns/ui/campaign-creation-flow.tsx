@@ -132,9 +132,6 @@ export function CampaignCreationFlow() {
       // Match creators and create allocations
       const allocations = createAllocationsForCampaign(campaign, 5);
 
-      console.log('[v0] Campaign created:', campaign);
-      console.log('[v0] Matched creators:', allocations.length);
-
       router.push(`/campaigns`);
     }
   };

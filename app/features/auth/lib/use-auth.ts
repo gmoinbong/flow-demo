@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
@@ -9,14 +8,10 @@ import {
   logoutUser,
   getCurrentUserFromApi,
   refreshAccessToken,
-  getCachedUser,
-  setCachedUser,
 } from './auth-api';
 import type { LoginCredentials, RegisterCredentials } from './auth-api';
 
 export function useAuth() {
-  const cachedUser = typeof window !== 'undefined' ? getCachedUser() : null;
-
   const {
     data: user,
     isLoading,
@@ -26,20 +21,11 @@ export function useAuth() {
     queryFn: getCurrentUserFromApi,
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes (formerly cacheTime)
-    retry: 1,
-    refetchOnMount: 'always',
+    retry: false, // Don't retry on 401 errors
+    refetchOnMount: false, // Prevent infinite loops
     refetchOnWindowFocus: false,
-    initialData: cachedUser || undefined,
-    placeholderData: cachedUser || undefined,
+    refetchOnReconnect: false, // Prevent refetch on reconnect
   });
-
-  useEffect(() => {
-    if (user && typeof window !== 'undefined') {
-      setCachedUser(user);
-    } else if (!user && !isLoading && typeof window !== 'undefined') {
-      setCachedUser(null);
-    }
-  }, [user, isLoading]);
 
   return {
     user: user || null,
@@ -56,8 +42,10 @@ export function useLogin() {
       return login(credentials);
     },
     onSuccess: data => {
+      // Set user data immediately to prevent refetch loops
       queryClient.setQueryData(['auth', 'user'], data.user);
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
+      // Don't invalidate queries immediately to prevent refetch on redirect
+      // queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
     onError: error => {
       console.error('Login error:', error);

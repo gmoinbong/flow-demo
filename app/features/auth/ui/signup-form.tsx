@@ -30,7 +30,6 @@ export function SignupForm() {
     companySize: '',
     role: '',
   });
-  console.log(formData);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const registerMutation = useRegister();

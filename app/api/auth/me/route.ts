@@ -7,6 +7,7 @@ import {
   ACCESS_TOKEN_MAX_AGE,
   REFRESH_TOKEN_MAX_AGE,
 } from '@/app/shared/lib/cookie-utils';
+import { getAccessToken } from '@/app/shared/api/get-access-token';
 import { transformUserData } from '@/app/features/auth/lib/transform-user-data';
 
 async function refreshTokens(
@@ -55,18 +56,8 @@ export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
 
-    let accessToken = request.headers.get('x-access-token');
-
-    if (!accessToken) {
-      accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
-    }
-
-    if (!accessToken) {
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader?.startsWith('Bearer ')) {
-        accessToken = authHeader.substring(7);
-      }
-    }
+    // Get access token using centralized function
+    let accessToken = await getAccessToken(request);
 
     if (!accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

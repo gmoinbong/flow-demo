@@ -9,14 +9,6 @@ export { LoginForm } from './ui/login-form';
 export { SignupForm } from './ui/signup-form';
 export { UserMenu } from './ui/user-menu';
 export {
-  getCurrentUser,
-  setCurrentUser,
-  getCachedUser,
-  setCachedUser,
-  clearAuthCache,
-  logout,
-  isAuthenticated,
-  requireAuth,
   login,
   register,
   logoutUser,

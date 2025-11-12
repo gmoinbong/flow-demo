@@ -69,9 +69,9 @@ export async function handleApiResponse<T>(response: Response): Promise<T> {
   // Check if response has content
   const contentType = response.headers.get('content-type');
   const isJson = contentType?.includes('application/json');
-  
+
   let data: unknown;
-  
+
   try {
     if (isJson) {
       const text = await response.text();
@@ -89,26 +89,35 @@ export async function handleApiResponse<T>(response: Response): Promise<T> {
   }
 
   if (!response.ok) {
-    const error: ApiError = typeof data === 'object' && data !== null
-      ? {
-          message: 'message' in data && typeof data.message === 'string' 
-            ? data.message 
-            : 'error' in data && typeof data.error === 'string'
-            ? data.error
-            : 'An error occurred',
-          statusCode: 'statusCode' in data && typeof data.statusCode === 'number'
-            ? data.statusCode
-            : response.status,
-          code: 'code' in data && typeof data.code === 'number' ? data.code : undefined,
-          context: 'context' in data && typeof data.context === 'object' && data.context !== null
-            ? data.context as Record<string, unknown>
-            : undefined,
-        }
-      : {
-          message: 'An error occurred',
-          statusCode: response.status,
-        };
-    
+    const error: ApiError =
+      typeof data === 'object' && data !== null
+        ? {
+            message:
+              'message' in data && typeof data.message === 'string'
+                ? data.message
+                : 'error' in data && typeof data.error === 'string'
+                  ? data.error
+                  : 'An error occurred',
+            statusCode:
+              'statusCode' in data && typeof data.statusCode === 'number'
+                ? data.statusCode
+                : response.status,
+            code:
+              'code' in data && typeof data.code === 'number'
+                ? data.code
+                : undefined,
+            context:
+              'context' in data &&
+              typeof data.context === 'object' &&
+              data.context !== null
+                ? (data.context as Record<string, unknown>)
+                : undefined,
+          }
+        : {
+            message: 'An error occurred',
+            statusCode: response.status,
+          };
+
     throw new ApiClientError(
       error.statusCode,
       error.code,

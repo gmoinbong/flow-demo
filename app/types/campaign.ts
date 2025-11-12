@@ -1,16 +1,17 @@
 export interface Campaign {
   id: string;
-  brandId: string;
+  brandId?: string; // Optional - may not be in list response
   name: string;
-  description: string;
+  description?: string; // Optional - may not be in list response
   budget: number;
-  goals: string[];
-  targetAudience: string;
-  platforms: string[];
-  startDate: string;
-  endDate: string;
+  currentBudget?: number; // Optional - may not be in list response
+  goals?: string[]; // Optional - may not be in list response
+  targetAudience?: string; // Optional - may not be in list response
+  platforms?: string[]; // Optional - may not be in list response
+  startDate: string | Date;
+  endDate: string | Date;
   status: 'draft' | 'active' | 'paused' | 'completed';
-  createdAt: string;
+  createdAt?: string | Date;
 }
 
 export interface CampaignAllocation {
