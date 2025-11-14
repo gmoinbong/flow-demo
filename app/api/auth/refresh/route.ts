@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
     const response = await fetch(`${backendUrl}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Update tokens in cookies
     const nextResponse = NextResponse.json({ success: true });
-    
+
     nextResponse.cookies.set(ACCESS_TOKEN_COOKIE, data.accessToken, {
       ...COOKIE_OPTIONS,
       maxAge: ACCESS_TOKEN_MAX_AGE,
@@ -74,4 +74,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

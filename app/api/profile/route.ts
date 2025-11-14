@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import {
-  ACCESS_TOKEN_COOKIE,
-} from '@/app/shared/lib/cookie-utils';
+import { ACCESS_TOKEN_COOKIE } from '@/app/shared/lib/cookie-utils';
 
 export async function GET(request: NextRequest) {
   try {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
     const cookieStore = await cookies();
 
@@ -59,8 +56,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
     const cookieStore = await cookies();
 

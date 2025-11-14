@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccessToken } from '@/app/shared/api/get-access-token';
 
-const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export async function GET(
   request: NextRequest,
@@ -43,4 +43,3 @@ export async function GET(
     );
   }
 }
-

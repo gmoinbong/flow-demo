@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state');
     const accessToken = searchParams.get('accessToken');
 
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
     let authData: {
       accessToken: string;
       refreshToken: string;
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     // Validate that tokens exist in response
     if (!authData.accessToken || !authData.refreshToken) {
-      console.error('OAuth response missing tokens:', { 
+      console.error('OAuth response missing tokens:', {
         hasAccessToken: !!authData.accessToken,
         hasRefreshToken: !!authData.refreshToken,
         dataKeys: Object.keys(authData),
@@ -98,4 +98,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

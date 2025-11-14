@@ -927,7 +927,7 @@ REDIS_PORT=6379
 # OAuth (Google example)
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:3000/auth/oauth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:8080/auth/oauth/google/callback
 ```
 
 **Frontend (.env.local):**
