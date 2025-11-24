@@ -63,8 +63,14 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
     );
   }
 
-  const formatDate = (date: string | Date) => {
+  const formatDate = (date: string | Date | undefined | null) => {
+    if (!date) {
+      return 'N/A';
+    }
     const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) {
+      return 'Invalid date';
+    }
     return d.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -138,16 +144,18 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
               )}
             </div>
 
-            <div className='flex items-center gap-2'>
-              <Calendar className='w-4 h-4 text-muted-foreground' />
-              <div>
-                <p className='text-sm text-muted-foreground'>Duration</p>
-                <p className='font-semibold'>
-                  {formatDate(campaign.startDate)} -{' '}
-                  {formatDate(campaign.endDate)}
-                </p>
+            {(campaign.startDate || campaign.endDate) && (
+              <div className='flex items-center gap-2'>
+                <Calendar className='w-4 h-4 text-muted-foreground' />
+                <div>
+                  <p className='text-sm text-muted-foreground'>Duration</p>
+                  <p className='font-semibold'>
+                    {formatDate(campaign.startDate)} -{' '}
+                    {formatDate(campaign.endDate)}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

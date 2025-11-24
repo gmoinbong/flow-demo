@@ -32,7 +32,7 @@ import {
 import Link from 'next/link';
 import { getCampaignById } from '@/app/features/campaigns/lib/campaign-api';
 import { getAllocationsByCampaign } from '@/app/features/campaigns/lib/campaign-api';
-import { getMockCreators } from '@/app/features/creators/lib/creator-api';
+import { useCreators } from '../../creators';
 
 interface LiveCampaignDashboardProps {
   campaignId: string;
@@ -47,16 +47,13 @@ export function LiveCampaignDashboard({
   const [creators, setCreators] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load campaign data
     const campaignData = getCampaignById(campaignId);
     setCampaign(campaignData);
 
-    // Load allocations
     const allocationData = getAllocationsByCampaign(campaignId);
     setAllocations(allocationData);
 
-    // Load creator details
-    const allCreators = getMockCreators();
+    const { creators: allCreators } = useCreators();
     setCreators(allCreators);
   }, [campaignId]);
 
@@ -82,16 +79,16 @@ export function LiveCampaignDashboard({
     (sum, a) => sum + a.performance.conversions,
     0
   );
-  const totalImpressions = totalReach * 2; // Estimate: 2 impressions per reach
+  const totalImpressions = totalReach * 2;
   const engagementRate =
     totalReach > 0 ? (totalEngagement / totalReach) * 100 : 0;
   const avgCTR =
     allocations.length > 0
       ? allocations.reduce((sum, a) => sum + a.performance.ctr, 0) /
-        allocations.length
+      allocations.length
       : 0;
   const spent = allocations.reduce((sum, a) => sum + a.currentBudget, 0);
-  const revenue = totalConversions * 23; // Estimate: $23 per conversion
+  const revenue = totalConversions * 23;
   const roi = spent > 0 ? revenue / spent : 0;
 
   const activeCreators = allocations.filter(a => a.status === 'active').length;
@@ -318,8 +315,8 @@ export function LiveCampaignDashboard({
                       $
                       {mockCampaign.totalEngagements > 0
                         ? (
-                            mockCampaign.spent / mockCampaign.totalEngagements
-                          ).toFixed(2)
+                          mockCampaign.spent / mockCampaign.totalEngagements
+                        ).toFixed(2)
                         : '0.00'}
                     </span>
                   </div>
@@ -331,8 +328,8 @@ export function LiveCampaignDashboard({
                       $
                       {mockCampaign.conversions > 0
                         ? (
-                            mockCampaign.spent / mockCampaign.conversions
-                          ).toFixed(2)
+                          mockCampaign.spent / mockCampaign.conversions
+                        ).toFixed(2)
                         : '0.00'}
                     </span>
                   </div>

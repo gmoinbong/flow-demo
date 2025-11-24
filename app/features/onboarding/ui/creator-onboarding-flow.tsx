@@ -23,7 +23,8 @@ import {
   Instagram,
   Youtube,
 } from 'lucide-react';
-import { getCurrentUser, setCurrentUser } from '@/app/features/auth';
+import { useAuth } from '@/app/features/auth';
+import { useQueryClient } from '@tanstack/react-query';
 
 const creatorSteps = [
   {
@@ -62,31 +63,78 @@ export function CreatorOnboardingFlow() {
     minBudget: '',
   });
   const router = useRouter();
-  const user = getCurrentUser();
+  const { user, isLoading } = useAuth();
+  const queryClient = useQueryClient();
+
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   const progress = (currentStep / creatorSteps.length) * 100;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < creatorSteps.length) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Complete onboarding and update user
       if (user) {
-        setCurrentUser({
-          ...user,
-          instagramHandle: formData.instagramHandle,
-          tiktokHandle: formData.tiktokHandle,
-          youtubeHandle: formData.youtubeHandle,
-          niche: formData.niche,
-          followers: {
-            instagram: Number.parseInt(formData.instagramFollowers) || 0,
-            tiktok: Number.parseInt(formData.tiktokFollowers) || 0,
-            youtube: Number.parseInt(formData.youtubeSubscribers) || 0,
-          },
-          onboardingComplete: true,
-        });
+        try {
+          const response = await fetch('/api/creators/complete-onboarding', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              instagramHandle: formData.instagramHandle || undefined,
+              instagramFollowers: formData.instagramFollowers
+                ? Number.parseInt(formData.instagramFollowers)
+                : undefined,
+              tiktokHandle: formData.tiktokHandle || undefined,
+              tiktokFollowers: formData.tiktokFollowers
+                ? Number.parseInt(formData.tiktokFollowers)
+                : undefined,
+              youtubeHandle: formData.youtubeHandle || undefined,
+              youtubeSubscribers: formData.youtubeSubscribers
+                ? Number.parseInt(formData.youtubeSubscribers)
+                : undefined,
+              niche: formData.niche.length > 0 ? formData.niche : undefined,
+              bio: formData.bio || undefined,
+              audienceLocation: formData.audienceLocation || undefined,
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to complete onboarding');
+          }
+
+          queryClient.setQueryData(['auth', 'user'], {
+            ...user,
+            instagramHandle: formData.instagramHandle,
+            tiktokHandle: formData.tiktokHandle,
+            youtubeHandle: formData.youtubeHandle,
+            niche: formData.niche,
+            followers: {
+              instagram: Number.parseInt(formData.instagramFollowers) || 0,
+              tiktok: Number.parseInt(formData.tiktokFollowers) || 0,
+              youtube: Number.parseInt(formData.youtubeSubscribers) || 0,
+            },
+            onboardingComplete: true,
+          });
+
+          await queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
+          await queryClient.invalidateQueries({ queryKey: ['profile'] });
+
+          router.push('/creator/dashboard');
+        } catch (error) {
+          console.error('Failed to complete onboarding:', error);
+          alert(
+            error instanceof Error
+              ? error.message
+              : 'Failed to complete onboarding. Please try again.'
+          );
+        }
       }
-      router.push('/creator/dashboard');
     }
   };
 

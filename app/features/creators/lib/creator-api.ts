@@ -1,5 +1,21 @@
 import { nextApiClient } from '@/app/shared/api/api-client';
 
+export interface SocialProfile {
+  id: string;
+  platform: 'instagram' | 'tiktok' | 'youtube';
+  username: string;
+  profileUrl: string | null;
+  followersDeclared: number | null;
+  followersVerified: number | null;
+  engagementRateDeclared: number | null;
+  engagementRateVerified: number | null;
+  location: string | null;
+  niches: string[] | null;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Creator {
   id: string;
   userId: string;
@@ -7,6 +23,7 @@ export interface Creator {
   bio: string | null;
   avatarUrl: string | null;
   status: 'active' | 'pending' | 'suspended';
+  socialProfiles: SocialProfile[];
   createdAt: string;
   updatedAt: string;
 }
@@ -24,10 +41,6 @@ export interface GetCreatorsResponse {
   offset: number;
 }
 
-// Creator API - fetch from backend
-// Cookies are automatically sent via credentials: 'include'
-// Middleware reads cookies and adds Authorization Bearer header
-// API routes read token from cookies or Authorization header
 export async function fetchCreators(
   params?: GetCreatorsParams
 ): Promise<GetCreatorsResponse> {

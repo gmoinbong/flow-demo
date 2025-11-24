@@ -1,4 +1,3 @@
-// Public API for campaigns feature
 export {
   getCampaigns,
   saveCampaign,
@@ -14,10 +13,6 @@ export {
   reallocateBudget,
   createAllocationsForCampaign,
 } from './lib/campaign-api';
-export {
-  initializeDemoData,
-  initializeDemoNotifications,
-} from './lib/demo-data-api';
 export { useCampaigns, useCampaign, useCampaignStats } from './lib/use-campaigns';
 export { LiveCampaignDashboard } from './ui/live-campaign-dashboard';
 export { CampaignCreationFlow } from './ui/campaign-creation-flow';

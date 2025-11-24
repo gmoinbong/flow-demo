@@ -12,7 +12,6 @@ import { Badge } from '@/app/shared/ui/badge';
 import { Button } from '@/app/shared/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/shared/ui/avatar';
 import { getAllocationsByCampaign } from '@/app/features/campaigns/lib/campaign-api';
-import { getMockCreators } from '@/app/features/creators/lib/creator-api';
 import { type CampaignAllocation, type Creator } from '@/app/types';
 import {
   CheckCircle2,
@@ -33,6 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/app/shared/ui/dialog';
+import { useCreators } from '../../creators';
 
 interface ContractManagementProps {
   campaignId: string;
@@ -52,8 +52,8 @@ export function ContractManagement({ campaignId }: ContractManagementProps) {
     const allocationData = getAllocationsByCampaign(campaignId);
     setAllocations(allocationData);
 
-    const allCreators = getMockCreators();
-    setCreators(allCreators);
+    const { creators: allCreators } = useCreators();
+    setCreators(allCreators as unknown as Creator[]);
   };
 
   const getCreatorById = (creatorId: string) => {

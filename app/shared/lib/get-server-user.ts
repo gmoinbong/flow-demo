@@ -16,7 +16,6 @@ export async function getServerUser(): Promise<User | null> {
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
         const baseUrl = `${protocol}://${host}`;
 
-        // Call internal API route to get user
         const response = await fetch(`${baseUrl}/api/auth/me`, {
             headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -46,7 +45,6 @@ export async function getServerProfile(): Promise<{ profile: unknown } | null> {
             return null;
         }
 
-        // Get base URL from headers for internal API calls
         const headersList = await headers();
         const host = headersList.get('host') || 'localhost:3000';
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';

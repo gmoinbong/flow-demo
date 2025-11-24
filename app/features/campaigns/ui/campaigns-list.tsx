@@ -64,7 +64,7 @@ function CampaignCard({ campaign }: CampaignCardProps) {
           <div>
             <p className='text-sm text-muted-foreground mb-1'>Budget</p>
             <p className='font-semibold'>
-              ${campaign.budget.toLocaleString()}
+              ${(campaign.budget / 100).toLocaleString()}
             </p>
           </div>
           <div>
@@ -88,13 +88,15 @@ function CampaignCard({ campaign }: CampaignCardProps) {
           </div>
         </div>
 
-        <div className='flex gap-2 mt-4'>
-          {campaign.platforms.map((platform: string) => (
-            <Badge key={platform} variant='outline'>
-              {platform}
-            </Badge>
-          ))}
-        </div>
+        {campaign.platforms && campaign.platforms.length > 0 && (
+          <div className='flex gap-2 mt-4'>
+            {campaign.platforms.map((platform: string) => (
+              <Badge key={platform} variant='outline'>
+                {platform}
+              </Badge>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

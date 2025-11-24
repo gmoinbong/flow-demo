@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/app/features/auth';
+import { useAuth } from '@/app/features/auth';
 import {
   getCampaignById,
   getAllocationsByCreator,
@@ -10,12 +10,13 @@ import {
 import type { Campaign, CampaignAllocation } from '@/app/types';
 
 export function useCreatorCampaign(campaignId: string) {
-  const [user, setUser] = useState(getCurrentUser());
+  const { user, isLoading } = useAuth();
   const [campaign, setCampaign] = useState<Campaign | null>(getCampaignById(campaignId));
   const [allocation, setAllocation] = useState<CampaignAllocation | null>(null);
   const router = useRouter();
 
   useEffect(() => {
+    if (isLoading) return;
     if (!user || user.role !== 'creator') {
       router.push('/login');
       return;
@@ -26,7 +27,6 @@ export function useCreatorCampaign(campaignId: string) {
       return;
     }
 
-    // Find the allocation for this creator
     const allocations = getAllocationsByCreator(user.id);
     const foundAllocation = allocations.find(a => a.campaignId === campaignId);
     if (!foundAllocation) {
@@ -35,7 +35,7 @@ export function useCreatorCampaign(campaignId: string) {
     }
 
     setAllocation(foundAllocation);
-  }, [user, campaign, campaignId, router]);
+  }, [user, campaign, campaignId, router, isLoading]);
 
   const submitContent = async (
     contentUrl: string,
@@ -43,7 +43,6 @@ export function useCreatorCampaign(campaignId: string) {
   ): Promise<void> => {
     if (!contentUrl || !allocation) return;
 
-    // Simulate upload delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     const updatedAllocation = {

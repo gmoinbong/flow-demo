@@ -25,11 +25,11 @@ import { useRouter } from 'next/navigation';
 import { BarChart3, ArrowRight, ArrowLeft, CheckCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import {
-  saveCampaign,
-  createAllocationsForCampaign,
+  createCampaign,
+  type CreateCampaignDto,
 } from '@/app/features/campaigns/lib/campaign-api';
-import { type Campaign } from '@/app/types';
 import { useAuth } from '@/app/features/auth/lib/use-auth';
+import { useQueryClient } from '@tanstack/react-query';
 
 const steps = [
   {
@@ -75,10 +75,11 @@ export function CampaignCreationFlow() {
   });
   const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const progress = (currentStep / steps.length) * 100;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -87,18 +88,19 @@ export function CampaignCreationFlow() {
         return;
       }
 
-      // Determine platforms from content types
       const platforms: string[] = [];
       if (formData.contentTypes.some(t => t.includes('Instagram')))
-        platforms.push('Instagram');
+        platforms.push('instagram');
       if (formData.contentTypes.some(t => t.includes('TikTok')))
-        platforms.push('TikTok');
+        platforms.push('tiktok');
       if (formData.contentTypes.some(t => t.includes('YouTube')))
-        platforms.push('YouTube');
+        platforms.push('youtube');
 
-      // Calculate dates
       const startDate = new Date();
-      const endDate = new Date();
+      startDate.setDate(startDate.getDate() + 1);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(startDate);
       if (formData.timeline.includes('week')) {
         const weeks = Number.parseInt(formData.timeline) || 1;
         endDate.setDate(endDate.getDate() + weeks * 7);
@@ -106,33 +108,79 @@ export function CampaignCreationFlow() {
         const months = Number.parseInt(formData.timeline) || 1;
         endDate.setMonth(endDate.getMonth() + months);
       } else {
-        endDate.setMonth(endDate.getMonth() + 1); // default 1 month
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+      endDate.setHours(23, 59, 59, 999);
+
+      if (!formData.name.trim()) {
+        alert('Campaign name is required');
+        return;
       }
 
-      const campaign: Campaign = {
-        id: `campaign_${Date.now()}`,
-        brandId: user.id,
-        name: formData.name,
-        description: formData.description,
-        budget: Number.parseInt(
-          formData.budget.split('-')[0]?.replace(/\D/g, '') || '10000'
-        ),
-        goals: formData.objectives,
-        targetAudience: formData.targetInterests,
-        platforms,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      };
+      if (formData.objectives.length === 0) {
+        alert('Please select at least one campaign objective');
+        return;
+      }
 
-      // Save campaign
-      saveCampaign(campaign);
+      if (platforms.length === 0) {
+        alert('Please select at least one platform');
+        return;
+      }
 
-      // Match creators and create allocations
-      const allocations = createAllocationsForCampaign(campaign, 5);
+      const budgetStr = formData.budget.split('-')[0]?.replace(/\D/g, '') || '10000';
+      const budgetInDollars = Number.parseInt(budgetStr);
+      const budgetInCents = budgetInDollars * 100;
 
-      router.push(`/campaigns`);
+      if (budgetInCents <= 0) {
+        alert('Budget must be greater than 0');
+        return;
+      }
+
+      let audienceSize: 'micro' | 'mid-tier' | 'macro' | 'mega' | undefined;
+      if (formData.audienceSize) {
+        audienceSize = formData.audienceSize as 'micro' | 'mid-tier' | 'macro' | 'mega';
+      }
+
+      if (startDate >= endDate) {
+        alert('End date must be after start date');
+        return;
+      }
+
+      try {
+        const campaignData: CreateCampaignDto = {
+          name: formData.name.trim(),
+          description: formData.description?.trim() || undefined,
+          budget: budgetInCents,
+          goals: formData.objectives,
+          targetAudience: formData.targetInterests?.trim() || undefined,
+          platforms,
+          audienceSize,
+          targetLocation: formData.targetLocation?.trim() || undefined,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        };
+
+        console.log('[Create Campaign] Sending data:', campaignData);
+
+        const createdCampaign = await createCampaign(campaignData);
+        console.log('Campaign created:', createdCampaign);
+
+        await queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+
+        router.push(`/campaigns`);
+      } catch (error) {
+        console.error('Failed to create campaign:', error);
+        
+        let errorMessage = 'Failed to create campaign. Please try again.';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'object' && error !== null) {
+          const apiError = error as { message?: string; error?: string };
+          errorMessage = apiError.message || apiError.error || errorMessage;
+        }
+
+        alert(errorMessage);
+      }
     }
   };
 

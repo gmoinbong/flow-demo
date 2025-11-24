@@ -14,8 +14,9 @@ import { Progress } from '@/app/shared/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/shared/ui/avatar';
 import { getAllocationsByCampaign } from '@/app/features/campaigns/lib/campaign-api';
 import { reallocateBudget } from '@/app/features/campaigns/lib/campaign-api';
-import { getMockCreators } from '@/app/features/creators/lib/creator-api';
 import { TrendingUp, TrendingDown, Zap, AlertCircle } from 'lucide-react';
+import { useCreators } from '../../creators';
+import { Creator } from '../../creators/lib/creator-api';
 
 interface BudgetReallocationProps {
   campaignId: string;
@@ -26,12 +27,11 @@ export function BudgetReallocation({ campaignId }: BudgetReallocationProps) {
     getAllocationsByCampaign(campaignId)
   );
   const [isReallocating, setIsReallocating] = useState(false);
-  const creators = getMockCreators();
+  const { creators } = useCreators();
 
   const handleReallocate = () => {
     setIsReallocating(true);
-
-    // Simulate AI processing
+    
     setTimeout(() => {
       reallocateBudget(campaignId);
       setAllocations(getAllocationsByCampaign(campaignId));
@@ -42,7 +42,6 @@ export function BudgetReallocation({ campaignId }: BudgetReallocationProps) {
     }, 1500);
   };
 
-  // Calculate performance scores
   const allocationsWithScores = allocations.map(allocation => {
     const creator = creators.find(c => c.id === allocation.creatorId);
     const { reach, engagement, conversions } = allocation.performance;
@@ -52,19 +51,17 @@ export function BudgetReallocation({ campaignId }: BudgetReallocationProps) {
 
     return {
       ...allocation,
-      creator,
+      creator: creator as Creator,
       score,
       budgetChange,
       changePercent,
     };
   });
 
-  // Sort by score
   const sortedAllocations = [...allocationsWithScores].sort(
     (a, b) => b.score - a.score
   );
 
-  // Identify top and bottom performers
   const topPerformers = sortedAllocations.slice(
     0,
     Math.ceil(sortedAllocations.length * 0.3)
@@ -147,14 +144,14 @@ export function BudgetReallocation({ campaignId }: BudgetReallocationProps) {
                     <Avatar className='h-10 w-10'>
                       <AvatarImage
                         src='/placeholder.svg'
-                        alt={allocation.creator?.name}
+                        alt={allocation.creator?.displayName || ''}
                       />
                       <AvatarFallback>
-                        {allocation.creator?.name?.charAt(0)}
+                        {allocation.creator?.displayName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className='font-medium'>{allocation.creator?.name}</p>
+                      <p className='font-medium'>{allocation.creator?.displayName}</p>
                       <p className='text-xs text-muted-foreground'>
                         Score: {allocation.score.toFixed(0)}
                       </p>
@@ -194,14 +191,14 @@ export function BudgetReallocation({ campaignId }: BudgetReallocationProps) {
                     <Avatar className='h-10 w-10'>
                       <AvatarImage
                         src='/placeholder.svg'
-                        alt={allocation.creator?.name}
+                        alt={allocation.creator?.displayName || ''}
                       />
                       <AvatarFallback>
-                        {allocation.creator?.name?.charAt(0)}
+                        {allocation.creator?.displayName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className='font-medium'>{allocation.creator?.name}</p>
+                      <p className='font-medium'>{allocation.creator?.displayName}</p>
                       <p className='text-xs text-muted-foreground'>
                         Score: {allocation.score.toFixed(0)}
                       </p>
@@ -258,16 +255,16 @@ export function BudgetReallocation({ campaignId }: BudgetReallocationProps) {
                         <Avatar className='h-10 w-10'>
                           <AvatarImage
                             src='/placeholder.svg'
-                            alt={allocation.creator?.name}
+                            alt={allocation.creator?.displayName || ''}
                           />
                           <AvatarFallback>
-                            {allocation.creator?.name?.charAt(0)}
+                            {allocation.creator?.displayName?.charAt(0) || ''}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className='flex items-center gap-2'>
                             <p className='font-medium'>
-                              {allocation.creator?.name}
+                              {allocation.creator?.displayName || ''}
                             </p>
                             {isTopPerformer && (
                               <Badge variant='default' className='text-xs'>

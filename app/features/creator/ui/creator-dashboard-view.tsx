@@ -39,10 +39,6 @@ import Link from 'next/link';
 import { ContractAcceptance } from './contract-acceptance';
 import { NotificationsDropdown } from './notifications-dropdown';
 import { useAuth } from '@/app/features/auth/lib/use-auth';
-import {
-  initializeDemoData,
-  initializeDemoNotifications,
-} from '@/app/features/campaigns';
 
 export function CreatorDashboardView() {
   const { user } = useAuth();
@@ -59,9 +55,6 @@ export function CreatorDashboardView() {
       return;
     }
 
-    initializeDemoData();
-    initializeDemoNotifications(user.id, user.role);
-    // Refresh allocations after demo data initialization
     setAllocations(getAllocationsByCreator(user.id));
   }, [user, router]);
 

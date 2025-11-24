@@ -1,21 +1,55 @@
 import type { Campaign, CampaignAllocation } from '@/app/types';
 import { nextApiClient } from '@/app/shared/api/api-client';
+import { fetchCreators } from '@/app/features/creators/lib/creator-api';
+import type { Creator } from '@/app/features/creators/lib/creator-api';
 
-// Campaign API - fetch from backend
-// Cookies are automatically sent via credentials: 'include'
-// Middleware reads cookies and adds x-access-token header
-// API routes read token from cookies or x-access-token header
 export async function fetchCampaigns(): Promise<Campaign[]> {
   const response = await nextApiClient<Campaign[]>('/api/campaigns');
-  return response;
+  return Array.isArray(response) ? response : [];
 }
 
 export async function fetchCampaignById(id: string): Promise<Campaign> {
-  const response = await nextApiClient<Campaign>(`/api/campaigns/${id}`);
+  const response = await nextApiClient<Campaign>(`/campaigns/${id}`);
   return response;
 }
 
-// Campaign helpers (legacy - for backward compatibility)
+export interface CreateCampaignDto {
+  name: string;
+  description?: string;
+  budget: number; // in cents
+  goals: string[];
+  targetAudience?: string;
+  platforms: string[];
+  audienceSize?: 'micro' | 'mid-tier' | 'macro' | 'mega';
+  targetLocation?: string;
+  startDate: string;
+  endDate: string;
+  trackingConfig?: {
+    requiredHashtags?: string[];
+    optionalHashtags?: string[];
+    requiredMentions?: string[];
+    trackingLinkPattern?: string;
+    minMatchConfidence?: number;
+  };
+}
+
+export interface CreateCampaignResponse {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: string;
+}
+
+export async function createCampaign(
+  data: CreateCampaignDto
+): Promise<CreateCampaignResponse> {
+  const response = await nextApiClient<CreateCampaignResponse>('/api/campaigns', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return response;
+}
+
 export function getCampaigns(): Campaign[] {
   if (typeof window === 'undefined') return [];
   const campaignsStr = localStorage.getItem('campaigns');
@@ -42,7 +76,6 @@ export function getCampaignsByBrand(brandId: string): Campaign[] {
   return getCampaigns().filter(c => c.brandId === brandId);
 }
 
-// Allocation helpers
 export function getAllocations(): CampaignAllocation[] {
   if (typeof window === 'undefined') return [];
   const allocationsStr = localStorage.getItem('allocations');
@@ -92,7 +125,6 @@ export function declineContract(allocationId: string): void {
   }
 }
 
-// Generate unique tracking link
 export function generateTrackingLink(
   campaignId: string,
   creatorId: string
@@ -105,23 +137,18 @@ export function generateTrackingLink(
   return `${baseUrl}/track/${trackingCode}`;
 }
 
-// Budget reallocation logic (±25% based on performance)
 export function reallocateBudget(campaignId: string): void {
   const allocations = getAllocationsByCampaign(campaignId);
   if (allocations.length === 0) return;
 
-  // Calculate performance scores
   const scores = allocations.map(allocation => {
     const { reach, engagement, conversions } = allocation.performance;
-    // Weighted score: 40% reach, 30% engagement, 30% conversions
     const score = reach * 0.4 + engagement * 0.3 + conversions * 0.3;
     return { allocation, score };
   });
 
-  // Sort by score
   scores.sort((a, b) => b.score - a.score);
 
-  // Get top and bottom performers
   const topPerformers = scores.slice(0, Math.ceil(scores.length * 0.3));
   const bottomPerformers = scores.slice(-Math.ceil(scores.length * 0.3));
 
@@ -137,16 +164,83 @@ export function reallocateBudget(campaignId: string): void {
   });
 }
 
-export function createAllocationsForCampaign(
+interface CreatorMatch {
+  creator: Creator;
+  score: number;
+}
+
+async function matchCreatorsForCampaign(
+  campaign: Campaign
+): Promise<CreatorMatch[]> {
+  const { creators } = await fetchCreators({ status: 'active', limit: 100 });
+
+  const matches: CreatorMatch[] = [];
+
+  for (const creator of creators) {
+    let score = 0;
+
+    if (campaign.platforms && campaign.platforms.length > 0) {
+      const normalizedCampaignPlatforms = campaign.platforms.map(p => p.toLowerCase());
+      const hasMatchingPlatform = creator.socialProfiles.some(profile =>
+        normalizedCampaignPlatforms.includes(profile.platform.toLowerCase())
+      );
+      if (hasMatchingPlatform) {
+        score += 30;
+      }
+    } else {
+      score += 10;
+    }
+
+    if (campaign.targetAudience && creator.socialProfiles.length > 0) {
+      const targetLower = campaign.targetAudience.toLowerCase();
+      const primaryProfile = creator.socialProfiles.find(p => p.isPrimary) || creator.socialProfiles[0];
+      const niches = primaryProfile.niches || [];
+      
+      const matchingNiches = niches.filter(niche =>
+        targetLower.includes(niche.toLowerCase()) || niche.toLowerCase().includes(targetLower)
+      );
+      
+      if (matchingNiches.length > 0) {
+        score += matchingNiches.length * 20;
+      }
+    }
+
+    const primaryProfile = creator.socialProfiles.find(p => p.isPrimary) || creator.socialProfiles[0];
+    if (primaryProfile) {
+      const followers = primaryProfile.followersVerified || primaryProfile.followersDeclared || 0;
+      if (followers > 0) {
+        score += Math.min(Math.log10(followers + 1) * 10, 30);
+      }
+    }
+
+    if (primaryProfile) {
+      const engagementRate = primaryProfile.engagementRateVerified || primaryProfile.engagementRateDeclared || 0;
+      if (engagementRate > 0) {
+        score += Math.min(engagementRate * 2, 20);
+      }
+    }
+
+    if (creator.status === 'active') {
+      score += 10;
+    }
+
+    matches.push({ creator, score });
+  }
+
+  matches.sort((a, b) => b.score - a.score);
+
+  return matches;
+}
+
+export async function createAllocationsForCampaign(
   campaign: Campaign,
   topN = 5
-): CampaignAllocation[] {
-  const matches = matchCreatorsForCampaign(campaign);
+): Promise<CampaignAllocation[]> {
+  const matches = await matchCreatorsForCampaign(campaign);
   const topMatches = matches.slice(0, topN);
 
-  // Parse budget range
   const budgetStr = campaign.budget.toString();
-  let totalBudget = 25000; // default
+  let totalBudget = 25000;
   if (budgetStr.includes('-')) {
     const [min, max] = budgetStr
       .split('-')
@@ -156,7 +250,6 @@ export function createAllocationsForCampaign(
     totalBudget = Number.parseInt(budgetStr.replace(/\D/g, '')) || 25000;
   }
 
-  // Allocate budget proportionally based on scores
   const totalScore = topMatches.reduce((sum, m) => sum + m.score, 0);
   const allocations: CampaignAllocation[] = [];
 
@@ -179,7 +272,6 @@ export function createAllocationsForCampaign(
       contractAccepted: false,
       createdAt: new Date().toISOString(),
     };
-    // Calculate CTR
     allocation.performance.ctr =
       (allocation.performance.conversions / allocation.performance.reach) * 100;
     allocations.push(allocation);

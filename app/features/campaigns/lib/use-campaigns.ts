@@ -10,27 +10,27 @@ export function useCampaigns() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
 
-  // Memoize user role to prevent unnecessary re-renders
   const userRole = useMemo(() => user?.role, [user?.role]);
   const isBrand = userRole === 'brand';
 
-  const { data: campaigns = [], isLoading, error } = useQuery({
+  const { data: campaignsData, isLoading, error } = useQuery({
     queryKey: ['campaigns'],
     queryFn: fetchCampaigns,
     enabled: !!user && isBrand && !isAuthLoading,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
-    refetchOnMount: false, // Prevent refetch on every mount
-    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
-  // Redirect if not authenticated or not brand (only once)
+  const campaigns = Array.isArray(campaignsData) ? campaignsData : [];
+
   useEffect(() => {
     if (!isAuthLoading && user && !isBrand) {
       router.push('/login');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBrand, isAuthLoading]); // Only depend on role and loading state
+  }, [isBrand, isAuthLoading]);
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
@@ -58,7 +58,7 @@ export function useCampaign(campaignId: string) {
     queryKey: ['campaign', campaignId],
     queryFn: () => fetchCampaignById(campaignId),
     enabled: !!campaignId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 

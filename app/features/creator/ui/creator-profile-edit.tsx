@@ -13,14 +13,20 @@ import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/shared/ui/avatar';
 import { Checkbox } from '@/app/shared/ui/checkbox';
-import { getCurrentUser, setCurrentUser } from '@/app/features/auth';
+import { useAuth } from '@/app/features/auth';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Instagram, Youtube, Save } from 'lucide-react';
 import Link from 'next/link';
 
 export function CreatorProfileEdit() {
-  const [user, setUser] = useState(getCurrentUser());
+  const { user, isLoading } = useAuth();
+  const queryClient = useQueryClient();
   const router = useRouter();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -57,8 +63,7 @@ export function CreatorProfileEdit() {
           youtube: Number.parseInt(formData.youtubeSubscribers) || 0,
         },
       };
-      setCurrentUser(updatedUser);
-      setUser(updatedUser);
+      queryClient.setQueryData(['auth', 'user'], updatedUser);
       alert('Profile updated successfully!');
     }
   };
