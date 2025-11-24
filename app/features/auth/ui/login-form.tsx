@@ -6,7 +6,7 @@ import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
-import { useLogin, useAuth } from '@/app/features/auth';
+import { useLogin, useAuth, getOnboardingRedirect } from '@/app/features/auth';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -17,22 +17,21 @@ export function LoginForm() {
   const loginMutation = useLogin();
   const { user, isLoading } = useAuth();
 
-  // Redirect if already authenticated (only once)
   const hasRedirectedRef = React.useRef(false);
   
   useEffect(() => {
-    // Only redirect if user is authenticated and we haven't redirected yet
     if (!isLoading && user && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
-      const redirect = searchParams.get('redirect') || '/dashboard';
-      // Use replace to avoid adding to history and prevent loops
+      
+      const onboardingRedirect = getOnboardingRedirect(user);
+      const redirect = onboardingRedirect || searchParams.get('redirect') || '/dashboard';
+      
       router.replace(redirect);
-      return; // Exit early to prevent further execution
+      return;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoading]); // Removed router and searchParams from dependencies to prevent re-runs
+  }, [user, isLoading]);
 
-  // Show loading state only on initial load, not on every render
   if (isLoading && !hasRedirectedRef.current) {
     return (
       <div className='space-y-6'>
@@ -43,7 +42,6 @@ export function LoginForm() {
     );
   }
   
-  // If redirecting, show nothing to prevent flash
   if (hasRedirectedRef.current && user) {
     return null;
   }

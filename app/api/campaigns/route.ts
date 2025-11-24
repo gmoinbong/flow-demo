@@ -5,14 +5,12 @@ const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export async function GET(request: NextRequest) {
   try {
-    // Get access token using centralized function
     const accessToken = await getAccessToken(request);
 
     if (!accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Proxy request to backend
     const response = await fetch(`${backendUrl}/campaigns`, {
       method: 'GET',
       headers: {
@@ -21,10 +19,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Log response for debugging
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Backend error:', response.status, errorText);
+      console.error('Server error:', response.status, errorText);
     }
 
     if (!response.ok) {
@@ -37,7 +34,58 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Campaigns API Error:', error);
+    console.error('Server error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const accessToken = await getAccessToken(request);
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+
+    if (!backendUrl) {
+      return NextResponse.json(
+        { error: 'Backend URL not configured' },
+        { status: 500 }
+      );
+    }
+
+    console.log('[Create Campaign] Request body:', JSON.stringify(body, null, 2));
+
+    const response = await fetch(`${backendUrl}/campaigns`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { error: errorText || 'Failed to create campaign' };
+      }
+      console.error('[Create Campaign] Backend error:', response.status, error);
+      return NextResponse.json(error, { status: response.status });
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: 201 });
+  } catch (error) {
+    console.error('Server error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

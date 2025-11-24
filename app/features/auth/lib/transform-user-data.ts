@@ -49,7 +49,7 @@ export function transformUserData(backendUser: BackendUser): User {
     id,
     email: backendUser.email,
     name,
-    role: (backendUser.role as 'brand' | 'creator') || 'brand',
+    role: (backendUser.role as 'brand' | 'creator') || undefined,
     company: backendUser.company as string | undefined,
     companySize: backendUser.companySize as string | undefined,
     jobRole: backendUser.jobRole as string | undefined,

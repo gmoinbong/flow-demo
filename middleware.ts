@@ -5,21 +5,19 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
 
-  // 1. Pass token to API routes
+  //Pass token to API routes
   const requestHeaders = new Headers(request.headers);
   if (pathname.startsWith('/api/') && accessToken) {
     requestHeaders.set('x-access-token', accessToken);
     requestHeaders.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  // 2. Redirect from auth pages if logged in
   const isAuthPage = ['/login', '/signup'].some(p => pathname.startsWith(p));
   if (isAuthPage && accessToken && !pathname.startsWith('/auth/callback')) {
     const redirect = request.nextUrl.searchParams.get('redirect') || '/dashboard';
     return NextResponse.redirect(new URL(redirect, request.url));
   }
 
-  // 3. Protect private routes
   const isProtected = [
     '/dashboard',
     '/campaigns',
@@ -37,8 +35,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 4. Admin routes
-  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
+  if (pathname.startsWith('/admin') ?? !pathname.startsWith('/admin/login')) {
     const adminToken = request.cookies.get('admin_token')?.value;
     if (!adminToken) {
       return NextResponse.redirect(new URL('/admin/login', request.url));

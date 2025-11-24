@@ -35,14 +35,12 @@ export function SignupForm() {
   const registerMutation = useRegister();
   const { user, isLoading } = useAuth();
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (!isLoading && user) {
       router.replace('/dashboard');
     }
   }, [user, isLoading, router]);
 
-  // Show loading state while checking auth
   if (isLoading) {
     return (
       <div className='space-y-6'>
@@ -56,13 +54,11 @@ export function SignupForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate required fields
     if (!formData.accountType) {
       alert('Please select an account type');
       return;
     }
 
-    // Trim and validate firstName and lastName
     const trimmedFirstName = formData.firstName.trim();
     const trimmedLastName = formData.lastName.trim();
 
@@ -82,7 +78,6 @@ export function SignupForm() {
       role: formData.accountType,
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
-      // Brand-specific fields
       ...(formData.accountType === 'brand' && {
         company: formData.company?.trim(),
         companySize: formData.companySize,
@@ -92,7 +87,11 @@ export function SignupForm() {
 
     registerMutation.mutate(registrationData, {
       onSuccess: () => {
-        router.push('/onboarding');
+        if (registrationData.role === 'creator') {
+          router.push('/onboarding/creator');
+        } else {
+          router.push('/onboarding');
+        }
       },
       onError: error => {
         console.error('Registration failed:', error);

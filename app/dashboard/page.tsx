@@ -1,14 +1,18 @@
+'use client';
+
 import {
   DashboardHeader,
   CampaignOverview,
   QuickActions,
   RecentActivity,
 } from '@/app/widgets/dashboard';
+import { OnboardingGuard } from '@/app/shared/components/onboarding-guard';
 
 export default function DashboardPage() {
   return (
-    <div className='min-h-screen bg-slate-50'>
-      <DashboardHeader />
+    <OnboardingGuard>
+      <div className='min-h-screen bg-slate-50'>
+        <DashboardHeader />
 
       <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
         <div className='mb-8'>
@@ -31,5 +35,6 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+    </OnboardingGuard>
   );
 }

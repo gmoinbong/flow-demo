@@ -22,7 +22,6 @@ export interface AuthResponse {
   user: User;
 }
 
-// API functions - all use cookies, no client-side token storage
 export async function login(
   credentials: LoginCredentials
 ): Promise<AuthResponse> {
@@ -58,12 +57,9 @@ export async function getCurrentUserFromApi(): Promise<User | null> {
     const user = await nextApiClient<User>('/api/auth/me', {});
     return user;
   } catch (error: any) {
-    // Silently handle 401 errors (not authenticated) - this is normal
-    // Don't redirect here, let the component handle it
     if (error?.statusCode === 401) {
       return null;
     }
-    // Only log non-401 errors
     if (error?.statusCode !== 401) {
       console.error('Get current user error:', error);
     }
@@ -81,4 +77,11 @@ export async function refreshAccessToken(): Promise<boolean> {
     console.error('Refresh token error:', error);
     return false;
   }
+}
+
+export async function updateUserRole(role: 'creator' | 'brand'): Promise<User> {
+  return nextApiClient<User>('/api/auth/role', {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
 }

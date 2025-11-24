@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Spinner } from '@/app/shared/ui/spinner';
+import { getOnboardingRedirect } from '@/app/features/auth';
+import type { User } from '@/app/types';
 
-/**
- * OAuth callback page
- * Extracts tokens from URL hash and sets them in httpOnly cookies via API route
- */
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +14,6 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const processCallback = async () => {
       try {
-        // Extract hash fragment from URL
         const hash = window.location.hash.substring(1); // Remove '#'
         
         if (!hash) {
@@ -24,7 +22,6 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // Parse hash fragment (format: access_token=...&refresh_token=...&user=...&isNewUser=...)
         const params = new URLSearchParams(hash);
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
@@ -37,7 +34,6 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // Parse user data
         let user = null;
         let isNewUser = false;
         
@@ -53,13 +49,12 @@ export default function AuthCallbackPage() {
           isNewUser = isNewUserStr === 'true';
         }
 
-        // Send tokens to API route to set httpOnly cookies
         const response = await fetch('/api/auth/callback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include', // Important: include cookies in request/response
+          credentials: 'include',
           body: JSON.stringify({
             accessToken,
             refreshToken,
@@ -75,15 +70,26 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // Wait a bit to ensure cookies are set
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Clear hash from URL
         window.history.replaceState(null, '', '/auth/callback');
 
-        // Cookies are now set via httpOnly cookies from API route
-        // Use window.location for full page reload to ensure cookies are sent
-        window.location.href = '/dashboard';
+        let fullUser: User | null = null;
+        try {
+          const userResponse = await fetch('/api/auth/me', {
+            credentials: 'include',
+          });
+          if (userResponse.ok) {
+            fullUser = await userResponse.json();
+          }
+        } catch (err) {
+          console.error('Failed to fetch user data:', err);
+        }
+
+        const onboardingRedirect = getOnboardingRedirect(fullUser);
+        const redirectPath = onboardingRedirect || '/dashboard';
+
+        window.location.href = redirectPath;
       } catch (err) {
         console.error('OAuth callback processing error:', err);
         setError('An unexpected error occurred');
