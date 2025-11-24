@@ -21,18 +21,15 @@ export function useProfilePageState(): PageState {
   const { data: profileData, isLoading: isProfileLoading, error } = useProfile();
 
   useEffect(() => {
-    // Wait for auth and profile to load
     if (isAuthLoading || isProfileLoading) {
       return;
     }
 
-    // If user is not authenticated, redirect to login
     if (!user) {
       router.push('/login?redirect=/profile');
       return;
     }
 
-    // If profile not found (404) but user exists, redirect to onboarding
     if (error) {
       const statusCode =
         error instanceof ApiClientError
@@ -45,18 +42,13 @@ export function useProfilePageState(): PageState {
           router.replace(onboardingRedirect);
           return;
         }
-        // If no specific onboarding redirect, go to general onboarding
         router.replace('/onboarding');
         return;
       }
     }
 
-    // Profile status is not related to onboarding completion
-    // Status is for campaign participation (active/pending/suspended)
-    // Onboarding completion is determined by user.onboardingComplete field
   }, [user, isAuthLoading, profileData, isProfileLoading, error, router]);
 
-  // Determine page state
   if (isAuthLoading || isProfileLoading) {
     return { type: 'loading' };
   }
@@ -84,6 +76,5 @@ export function useProfilePageState(): PageState {
     };
   }
 
-  // Fallback to loading if no data yet
   return { type: 'loading' };
 }

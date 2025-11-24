@@ -66,9 +66,6 @@ export function OnboardingFlow() {
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  // Server-side checks are handled in page.tsx
-  // Client-side only handles loading state
-
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -80,16 +77,13 @@ export function OnboardingFlow() {
       setCurrentStep(currentStep + 1);
     } else {
       if (user) {
-        // Update user data in React Query cache to mark onboarding as complete
         queryClient.setQueryData(['auth', 'user'], {
           ...user,
           onboardingComplete: true,
         });
 
-        // Invalidate queries to refetch user data from server
         await queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
       }
-      // Redirect to dashboard after onboarding completion
       router.push('/dashboard');
     }
   };
