@@ -42,10 +42,7 @@ export function useLogin() {
       return login(credentials);
     },
     onSuccess: data => {
-      // Set user data immediately to prevent refetch loops
       queryClient.setQueryData(['auth', 'user'], data.user);
-      // Don't invalidate queries immediately to prevent refetch on redirect
-      // queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
     onError: error => {
       console.error('Login error:', error);
