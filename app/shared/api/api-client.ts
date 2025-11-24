@@ -24,7 +24,7 @@ export class ApiClientError extends Error {
 async function refreshTokenIfNeeded(): Promise<boolean> {
   // Client-side: refresh via API route (tokens are in cookies)
   try {
-    const response = await fetch('/api/auth/refresh', {
+    const response = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
     });
@@ -43,7 +43,10 @@ export async function apiClient(
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
 
-  let response = await fetch(`${BACKEND_URL}${endpoint}`, {
+  // Ensure endpoint starts with /api
+  const apiEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+
+  let response = await fetch(apiEndpoint, {
     ...options,
     headers,
     credentials: 'include', // Send cookies automatically
@@ -54,7 +57,7 @@ export async function apiClient(
     const refreshed = await refreshTokenIfNeeded();
     if (refreshed) {
       // Retry request with refreshed tokens (in cookies)
-      response = await fetch(`${BACKEND_URL}${endpoint}`, {
+      response = await fetch(apiEndpoint, {
         ...options,
         headers,
         credentials: 'include',

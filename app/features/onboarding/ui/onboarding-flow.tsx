@@ -23,7 +23,8 @@ import { Checkbox } from '@/app/shared/ui/checkbox';
 import { Progress } from '@/app/shared/ui/progress';
 import { useRouter } from 'next/navigation';
 import { BarChart3, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
-import { getCurrentUser, setCurrentUser } from '@/app/features/auth';
+import { useAuth } from '@/app/features/auth';
+import { useQueryClient } from '@tanstack/react-query';
 
 const brandSteps = [
   {
@@ -62,23 +63,33 @@ export function OnboardingFlow() {
     timeline: '',
   });
   const router = useRouter();
-  const [user, setUser] = useState(getCurrentUser());
+  const { user, isLoading } = useAuth();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (user?.role === 'creator') {
-      router.push('/onboarding/creator');
-    }
-  }, [user, router]);
+  // Server-side checks are handled in page.tsx
+  // Client-side only handles loading state
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   const progress = (currentStep / brandSteps.length) * 100;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < brandSteps.length) {
       setCurrentStep(currentStep + 1);
     } else {
       if (user) {
-        setCurrentUser({ ...user, onboardingComplete: true });
+        // Update user data in React Query cache to mark onboarding as complete
+        queryClient.setQueryData(['auth', 'user'], {
+          ...user,
+          onboardingComplete: true,
+        });
+
+        // Invalidate queries to refetch user data from server
+        await queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
       }
+      // Redirect to dashboard after onboarding completion
       router.push('/dashboard');
     }
   };

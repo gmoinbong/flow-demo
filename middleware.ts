@@ -1,62 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ACCESS_TOKEN_COOKIE } from '@/app/shared/lib/cookie-utils';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
 
-  // Pass token to API routes via header
+  // 1. Pass token to API routes
   const requestHeaders = new Headers(request.headers);
-  if (pathname.startsWith('/api/')) {
-    if (accessToken) {
-      // Add both x-access-token (for backward compatibility) and Authorization header
-      requestHeaders.set('x-access-token', accessToken);
-      requestHeaders.set('Authorization', `Bearer ${accessToken}`);
-    }
+  if (pathname.startsWith('/api/') && accessToken) {
+    requestHeaders.set('x-access-token', accessToken);
+    requestHeaders.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  const isOAuthCallback = pathname.startsWith('/auth/callback');
-  const authPages = ['/login', '/signup'];
-  const isAuthPage =
-    !isOAuthCallback &&
-    authPages.some(page => pathname === page || pathname.startsWith(page));
-
-  if (isAuthPage && accessToken) {
-    const redirectUrl =
-      request.nextUrl.searchParams.get('redirect') || '/dashboard';
-    return NextResponse.redirect(new URL(redirectUrl, request.url));
+  // 2. Redirect from auth pages if logged in
+  const isAuthPage = ['/login', '/signup'].some(p => pathname.startsWith(p));
+  if (isAuthPage && accessToken && !pathname.startsWith('/auth/callback')) {
+    const redirect = request.nextUrl.searchParams.get('redirect') || '/dashboard';
+    return NextResponse.redirect(new URL(redirect, request.url));
   }
 
-  // Protected routes
-  const protectedRoutes = [
+  // 3. Protect private routes
+  const isProtected = [
     '/dashboard',
     '/campaigns',
     '/creators',
     '/payments',
     '/reports',
     '/profile',
-    '/creator/dashboard',
-    '/creator/campaigns',
-    '/creator/messages',
-    '/creator/payments',
-    '/creator/profile',
-  ];
+    '/creator',
+    '/onboarding',
+  ].some(route => pathname.startsWith(route));
 
-  const isProtectedRoute = protectedRoutes.some(route =>
-    pathname.startsWith(route)
-  );
-
-  if (isProtectedRoute && !accessToken) {
-    // Redirect to login with return URL
+  if (isProtected && !accessToken) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Admin routes (if needed)
+  // 4. Admin routes
   if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
     const adminToken = request.cookies.get('admin_token')?.value;
-
     if (!adminToken) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
@@ -78,6 +61,7 @@ export const config = {
     '/reports/:path*',
     '/profile/:path*',
     '/creator/:path*',
+    '/onboarding/:path*',
     '/admin/:path*',
     '/api/:path*',
     '/login/:path*',

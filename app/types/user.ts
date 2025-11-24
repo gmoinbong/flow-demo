@@ -10,7 +10,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
+  role?: UserRole;
   company?: string;
   companySize?: string;
   jobRole?: string;

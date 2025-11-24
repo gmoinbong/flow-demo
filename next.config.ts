@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
         source: '/api/:path*',
         destination: `${
           process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
-        }/:path*`,
+        }/api/:path*`,
       },
     ];
   },
