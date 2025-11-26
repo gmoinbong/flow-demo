@@ -1,11 +1,11 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 FROM base AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 
-RUN npm install --legacy-peer-deps || npm install
+RUN npm install
 
 FROM base AS builder
 WORKDIR /app
@@ -22,8 +22,8 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 
@@ -32,9 +32,6 @@ RUN chown nextjs:nodejs .next
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Copy .env file if it exists
-COPY --from=builder /app/.env* ./
 
 USER nextjs
 
