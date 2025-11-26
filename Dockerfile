@@ -1,5 +1,7 @@
 FROM node:20-slim AS base
 
+RUN npm install -g npm@latest
+
 FROM base AS deps
 WORKDIR /app
 
