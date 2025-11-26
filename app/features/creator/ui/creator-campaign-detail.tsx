@@ -204,12 +204,12 @@ export function CreatorCampaignDetail({
                 </CardHeader>
                 <CardContent>
                   <div className='space-y-2'>
-                    {campaign.goals.map((goal, index) => (
+                    {campaign.goals?.map((goal, index) => (
                       <div key={index} className='flex items-center gap-2'>
                         <Target className='w-4 h-4 text-primary' />
                         <span>{goal}</span>
                       </div>
-                    ))}
+                    )) || <p className='text-muted-foreground text-sm'>No goals specified</p>}
                   </div>
                 </CardContent>
               </Card>
@@ -219,15 +219,15 @@ export function CreatorCampaignDetail({
                   <CardTitle>Target Audience</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className='text-sm'>{campaign.targetAudience}</p>
+                  <p className='text-sm'>{campaign.targetAudience || 'Not specified'}</p>
                   <div className='mt-4'>
                     <p className='text-sm font-medium mb-2'>Platforms</p>
                     <div className='flex gap-2'>
-                      {campaign.platforms.map(platform => (
+                      {campaign.platforms?.map(platform => (
                         <Badge key={platform} variant='outline'>
                           {platform}
                         </Badge>
-                      ))}
+                      )) || <p className='text-muted-foreground text-sm'>No platforms specified</p>}
                     </div>
                   </div>
                 </CardContent>

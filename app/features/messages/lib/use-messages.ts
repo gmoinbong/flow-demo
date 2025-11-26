@@ -8,6 +8,7 @@ import {
   markMessagesAsRead,
 } from './message-api';
 import { getCampaignById } from '@/app/features/campaigns';
+import type { UserRole } from '@/app/types';
 import type { MessageThread, Message } from '@/app/types';
 
 export function useMessages() {
@@ -54,7 +55,7 @@ export function useMessages() {
     setMessages(campaignMessages);
     markMessagesAsRead(campaignId, user.id);
     // Refresh threads to update unread count
-    setThreads(getMessageThreads(user.id, user.role));
+    setThreads(getMessageThreads(user.id, (user.role || 'creator') as UserRole));
   };
 
   const handleSelectThread = (thread: MessageThread) => {
@@ -73,8 +74,8 @@ export function useMessages() {
       campaignId: selectedThread.campaignId,
       senderId: user.id,
       senderName: user.name,
-      senderRole: user.role,
-      receiverId: campaign.brandId,
+      senderRole: (user.role || 'creator') as UserRole,
+      receiverId: campaign.brandId || '',
       content: newMessage,
       read: false,
     });

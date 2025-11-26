@@ -1,6 +1,5 @@
 import type { Message, MessageThread, UserRole } from '@/app/types';
 import { getCampaignById } from '@/app/features/campaigns/lib/campaign-api';
-import { getCurrentUser } from '@/app/features/auth/lib/auth-api';
 import { saveNotification } from '@/app/features/notifications/lib/notification-api';
 
 export function getMessages(campaignId: string): Message[] {
@@ -85,11 +84,11 @@ export function getMessageThreads(
       threadMap.set(message.campaignId, {
         campaignId: message.campaignId,
         campaignName: campaign.name,
-        brandId: campaign.brandId,
+        brandId: campaign.brandId || '',
         brandName: campaign.name,
         creatorId: isCreator ? userId : message.senderId,
         creatorName: isCreator
-          ? getCurrentUser()?.name || ''
+          ? message.senderName
           : message.senderName,
         lastMessage: message,
         unreadCount: 0,

@@ -416,7 +416,7 @@ export function CreatorDashboardView() {
                             Platforms
                           </p>
                           <p className='text-sm font-medium'>
-                            {campaign.platforms.join(', ')}
+                            {campaign.platforms?.join(', ') || 'Not specified'}
                           </p>
                         </div>
                       </div>
@@ -524,9 +524,9 @@ export function CreatorDashboardView() {
                           <div>
                             <p className='font-medium'>{campaign.name}</p>
                             <p className='text-sm text-muted-foreground'>
-                              {new Date(
-                                campaign.createdAt
-                              ).toLocaleDateString()}
+                              {campaign.createdAt 
+                                ? new Date(campaign.createdAt).toLocaleDateString()
+                                : 'N/A'}
                             </p>
                           </div>
                           <div className='text-right'>
