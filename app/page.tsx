@@ -3,6 +3,8 @@ import { ArrowRight, BarChart3, Users, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HomePage() {
+console.log(process.env.NEXT_PUBLIC_API_URL);
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-50 to-blue-50'>
       {/* Header */}
