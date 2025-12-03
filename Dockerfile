@@ -16,8 +16,9 @@ COPY --from=deps /app/node_modules ./node_modules
 
 COPY . .
 
+# Accept build arg, but also allow runtime env as fallback
 ARG NEXT_PUBLIC_BASE_URL
-ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
+ENV NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
 
 RUN npm run build
 
@@ -42,6 +43,11 @@ ENV PORT=$PORT
 EXPOSE $PORT
 
 ENV HOSTNAME="0.0.0.0"
+
+# Allow runtime override of NEXT_PUBLIC_BASE_URL (though it's build-time in Next.js)
+# This is mainly for server-side usage
+ARG NEXT_PUBLIC_BASE_URL
+ENV NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
 
 CMD ["node", "server.js"]
 
