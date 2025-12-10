@@ -24,10 +24,7 @@ export function CreatorProfileEdit() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
+  // All hooks must be called before any conditional returns
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -46,6 +43,29 @@ export function CreatorProfileEdit() {
       router.push('/login');
     }
   }, [user, router]);
+
+  // Update form data when user data loads
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        instagramHandle: user.instagramHandle || '',
+        instagramFollowers: user.followers?.instagram?.toString() || '',
+        tiktokHandle: user.tiktokHandle || '',
+        tiktokFollowers: user.followers?.tiktok?.toString() || '',
+        youtubeHandle: user.youtubeHandle || '',
+        youtubeSubscribers: user.followers?.youtube?.toString() || '',
+        niche: user.niche || [],
+        bio: '',
+      });
+    }
+  }, [user]);
+
+  // Early returns AFTER all hooks
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   const handleSave = () => {
     if (user) {

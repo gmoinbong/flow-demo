@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
@@ -15,9 +15,10 @@ import {
 } from '@/app/shared/ui/select';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
-import { useRegister, useAuth } from '@/app/features/auth';
+import { useRegister } from '@/app/features/auth';
 import type { UserRole } from '@/app/types';
 import { RadioGroup, RadioGroupItem } from '@/app/shared/ui/radio-group';
+import { useToast } from '@/app/shared/hooks';
 
 export function SignupForm() {
   const [formData, setFormData] = useState({
@@ -33,29 +34,19 @@ export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const registerMutation = useRegister();
-  const { user, isLoading } = useAuth();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      router.replace('/dashboard');
-    }
-  }, [user, isLoading, router]);
-
-  if (isLoading) {
-    return (
-      <div className='space-y-6'>
-        <div className='text-center py-4 text-muted-foreground'>
-          Checking authentication...
-        </div>
-      </div>
-    );
-  }
+  // Removed useAuth and auto-redirect - causing conflicts
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.accountType) {
-      alert('Please select an account type');
+      toast({
+        title: 'Account type required',
+        description: 'Please select an account type',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -63,12 +54,20 @@ export function SignupForm() {
     const trimmedLastName = formData.lastName.trim();
 
     if (!trimmedFirstName || !trimmedLastName) {
-      alert('First name and last name are required');
+      toast({
+        title: 'Name required',
+        description: 'First name and last name are required',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (formData.accountType === 'brand' && !formData.company?.trim()) {
-      alert('Company name is required for brand accounts');
+      toast({
+        title: 'Company name required',
+        description: 'Company name is required for brand accounts',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -87,22 +86,38 @@ export function SignupForm() {
 
     registerMutation.mutate(registrationData, {
       onSuccess: () => {
-        if (registrationData.role === 'creator') {
-          router.push('/onboarding/creator');
-        } else {
-          router.push('/onboarding');
-        }
+        toast({
+          title: 'Success',
+          description: 'Account created successfully. Redirecting...',
+        });
+        
+        // Cookies are set during registration - hard redirect
+        setTimeout(() => {
+          if (registrationData.role === 'creator') {
+            window.location.href = '/onboarding/creator';
+          } else {
+            window.location.href = '/onboarding';
+          }
+        }, 500);
       },
       onError: error => {
         console.error('Registration failed:', error);
-        alert('Registration failed. Please try again.');
+        toast({
+          title: 'Registration failed',
+          description: 'Failed to create account. Please try again.',
+          variant: 'destructive',
+        });
       },
     });
   };
 
   const handleGoogleSignup = async () => {
     if (!formData.accountType) {
-      alert('Please select an account type first');
+      toast({
+        title: 'Account type required',
+        description: 'Please select an account type first',
+        variant: 'destructive',
+      });
       return;
     }
 

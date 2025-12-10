@@ -117,7 +117,7 @@ export function CreatorPaymentSettings() {
       <div className='border-b bg-card'>
         <div className='container mx-auto px-6 py-4'>
           <div className='flex items-center gap-4'>
-            <Link href='/creator/dashboard'>
+            <Link href='/dashboard'>
               <Button variant='ghost' size='sm'>
                 <ArrowLeft className='w-4 h-4 mr-2' />
                 Back to Dashboard

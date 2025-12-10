@@ -1,50 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
-import { useLogin, useAuth, getOnboardingRedirect } from '@/app/features/auth';
+import { useLogin } from '@/app/features/auth';
+import { useToast } from '@/app/shared/hooks';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const loginMutation = useLogin();
-  const { user, isLoading } = useAuth();
-
-  const hasRedirectedRef = React.useRef(false);
-  
-  useEffect(() => {
-    if (!isLoading && user && !hasRedirectedRef.current) {
-      hasRedirectedRef.current = true;
-      
-      const onboardingRedirect = getOnboardingRedirect(user);
-      const redirect = onboardingRedirect || searchParams.get('redirect') || '/dashboard';
-      
-      router.replace(redirect);
-      return;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoading]);
-
-  if (isLoading && !hasRedirectedRef.current) {
-    return (
-      <div className='space-y-6'>
-        <div className='text-center py-4 text-muted-foreground'>
-          Checking authentication...
-        </div>
-      </div>
-    );
-  }
-  
-  if (hasRedirectedRef.current && user) {
-    return null;
-  }
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +23,24 @@ export function LoginForm() {
     loginMutation.mutate(
       { email, password },
       {
-        onSuccess: () => {
-          const redirect = searchParams.get('redirect') || '/dashboard';
-          router.push(redirect);
+        onSuccess: (data) => {
+          toast({
+            title: 'Success',
+            description: 'Logged in successfully. Redirecting...',
+          });
+          
+          // Hard redirect - let middleware determine correct path
+          setTimeout(() => {
+            window.location.href = searchParams.get('redirect') || '/dashboard';
+          }, 500);
         },
         onError: error => {
           console.error('Login failed:', error);
-          alert('Login failed. Please check your credentials.');
+          toast({
+            title: 'Login failed',
+            description: 'Please check your credentials and try again.',
+            variant: 'destructive',
+          });
         },
       }
     );

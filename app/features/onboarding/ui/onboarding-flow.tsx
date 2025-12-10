@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { BarChart3, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/app/features/auth';
 import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/app/shared/hooks';
 
 const brandSteps = [
   {
@@ -65,6 +66,7 @@ export function OnboardingFlow() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -77,14 +79,50 @@ export function OnboardingFlow() {
       setCurrentStep(currentStep + 1);
     } else {
       if (user) {
-        queryClient.setQueryData(['auth', 'user'], {
-          ...user,
-          onboardingComplete: true,
-        });
+        try {
+          const response = await fetch('/api/auth/complete-onboarding', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
 
-        await queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to complete onboarding');
+          }
+
+          await response.json();
+
+          // Update local cache with completed status
+          queryClient.setQueryData(['auth', 'user'], {
+            ...user,
+            onboardingComplete: true,
+          });
+
+          // Show success message
+          toast({
+            title: 'Success!',
+            description: 'Your profile has been set up. Redirecting to dashboard...',
+          });
+
+          // Small delay for toast to show
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+          // Redirect to brand dashboard
+          window.location.href = '/brand/dashboard';
+        } catch (error) {
+          console.error('Failed to complete onboarding:', error);
+          toast({
+            title: 'Onboarding failed',
+            description:
+              error instanceof Error
+                ? error.message
+                : 'Failed to complete onboarding. Please try again.',
+            variant: 'destructive',
+          });
+        }
       }
-      router.push('/dashboard');
     }
   };
 

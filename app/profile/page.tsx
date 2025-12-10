@@ -16,7 +16,7 @@ export default function ProfilePage() {
     if (user?.role === 'creator') {
       return '/creator/dashboard';
     }
-    return '/dashboard';
+    return '/brand/dashboard';
   };
 
   if (state.type === 'loading') {

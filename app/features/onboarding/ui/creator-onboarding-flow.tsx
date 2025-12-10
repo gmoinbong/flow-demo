@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/app/features/auth';
 import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/app/shared/hooks';
 
 const creatorSteps = [
   {
@@ -65,6 +66,7 @@ export function CreatorOnboardingFlow() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
 
   if (isLoading) {
@@ -108,6 +110,9 @@ export function CreatorOnboardingFlow() {
             throw new Error(error.error || 'Failed to complete onboarding');
           }
 
+          await response.json();
+
+          // Update local cache with completed status
           queryClient.setQueryData(['auth', 'user'], {
             ...user,
             instagramHandle: formData.instagramHandle,
@@ -122,17 +127,27 @@ export function CreatorOnboardingFlow() {
             onboardingComplete: true,
           });
 
-          await queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
-          await queryClient.invalidateQueries({ queryKey: ['profile'] });
+          // Show success message
+          toast({
+            title: 'Success!',
+            description: 'Your creator profile has been set up. Redirecting to dashboard...',
+          });
 
-          router.push('/creator/dashboard');
+          // Small delay for toast to show
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+          // Redirect to creator dashboard
+          window.location.href = '/creator/dashboard';
         } catch (error) {
           console.error('Failed to complete onboarding:', error);
-          alert(
-            error instanceof Error
-              ? error.message
-              : 'Failed to complete onboarding. Please try again.'
-          );
+          toast({
+            title: 'Onboarding failed',
+            description:
+              error instanceof Error
+                ? error.message
+                : 'Failed to complete onboarding. Please try again.',
+            variant: 'destructive',
+          });
         }
       }
     }
