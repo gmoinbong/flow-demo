@@ -35,11 +35,14 @@ function extractToken(tokenResult: string | { accessToken: string; refreshToken?
 
 export async function middleware(request: NextRequest) {
   const { pathname, origin, searchParams } = request.nextUrl;
+  
+  // Use backend URL for API calls in middleware
+  const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || origin;
 
   const passThrough = (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult);
   };
-
+  
   const redirect = (to: string, tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult, to);
   };
@@ -49,7 +52,7 @@ export async function middleware(request: NextRequest) {
 
   const fetchUserSafe = async (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     const token = extractToken(tokenResult as string | { accessToken: string; refreshToken?: string } | null);
-    return fetchUser(request, origin, token);
+    return fetchUser(request, backendUrl, token);
   };
 
   if (
@@ -67,7 +70,7 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === '/') {
     // Ensure valid token before checking user
-    const validToken = await ensureValidToken(request, origin);
+    const validToken = await ensureValidToken(request, backendUrl);
     if (!validToken) {
       return passThrough();
     }
@@ -80,7 +83,7 @@ export async function middleware(request: NextRequest) {
 
   if (matchesRoute(pathname, ROUTES.public)) {
     // Ensure valid token if refresh token exists
-    const validToken = await ensureValidToken(request, origin);
+    const validToken = await ensureValidToken(request, backendUrl);
     if (validToken) {
       const user = await fetchUserSafe(validToken);
       if (user) {
@@ -108,7 +111,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Ensure valid token for protected routes
-  const validToken = await ensureValidToken(request, origin);
+  const validToken = await ensureValidToken(request, backendUrl);
   if (!validToken) {
     return redirectToLogin();
   }
