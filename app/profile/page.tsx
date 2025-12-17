@@ -94,7 +94,7 @@ export default function ProfilePage() {
               </p>
             </div>
             <div className='flex items-center gap-2'>
-              {user?.role && (
+              {user?.role && user?.role !== 'brand' && (
                 <Button
                   variant='outline'
                   onClick={() => router.push(getDashboardPath(true))}

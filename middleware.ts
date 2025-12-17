@@ -150,7 +150,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (matchesRoute(pathname, ROUTES.creatorRoutes) && user.role !== 'creator') {
-    return redirect('/brand/dashboard', validToken);
+    return redirect('/dashboard', validToken);
   }
 
   return passThrough(validToken);
