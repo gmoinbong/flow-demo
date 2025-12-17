@@ -79,6 +79,8 @@ export async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
+
+
 export async function updateUserRole(role: 'creator' | 'brand'): Promise<User> {
   return nextApiClient<User>('/api/auth/role', {
     method: 'PATCH',

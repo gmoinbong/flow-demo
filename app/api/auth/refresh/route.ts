@@ -7,7 +7,7 @@ import {
   ACCESS_TOKEN_MAX_AGE,
   REFRESH_TOKEN_MAX_AGE,
 } from '@/app/shared/lib/cookie-utils';
-import { getUserIdFromToken } from '@/app/shared/lib/jwt-utils';
+import { refreshAccessToken } from '@/app/features/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,16 +21,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Decode JWT to get userId
-    const userId = getUserIdFromToken(refreshToken);
-    if (!userId) {
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!backendUrl) {
       return NextResponse.json(
-        { error: 'Invalid refresh token' },
-        { status: 401 }
+        { error: 'Backend URL not configured' },
+        { status: 500 }
       );
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL;
     const response = await fetch(`${backendUrl}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,7 +38,6 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     if (!response.ok) {
-      // Clear cookies on refresh failure
       const errorResponse = NextResponse.json(
         { error: data.message || 'Token refresh failed' },
         { status: response.status }
@@ -50,14 +47,20 @@ export async function POST(request: NextRequest) {
       return errorResponse;
     }
 
-    // Update tokens in cookies
-    const nextResponse = NextResponse.json({ success: true });
+    // Return both tokens in response for middleware
+    const nextResponse = NextResponse.json({ 
+      success: true,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken, // Include in response for middleware
+    });
 
+    // Always update access token
     nextResponse.cookies.set(ACCESS_TOKEN_COOKIE, data.accessToken, {
       ...COOKIE_OPTIONS,
       maxAge: ACCESS_TOKEN_MAX_AGE,
     });
 
+    // Always update refresh token if backend returned new one (token rotation)
     if (data.refreshToken) {
       nextResponse.cookies.set(REFRESH_TOKEN_COOKIE, data.refreshToken, {
         ...COOKIE_OPTIONS,
@@ -73,4 +76,18 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+
+export async function GET(request: NextRequest) {
+  const redirect = request.nextUrl.searchParams.get('redirect');
+  if (!redirect) {
+    return NextResponse.json({ error: 'Redirect is required' }, { status: 400 });
+  }
+
+  const refreshed = await refreshAccessToken();
+  if (!refreshed) {
+    return NextResponse.json({ error: 'Failed to refresh token' }, { status: 500 });
+  }
+  return NextResponse.redirect(new URL(redirect, request.url));
 }

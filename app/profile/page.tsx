@@ -4,19 +4,31 @@ import { ProfileView } from '@/app/features/profile/ui/profile-view';
 import { useProfilePageState } from '@/app/features/profile/lib/use-profile-page-state';
 import { useAuth } from '@/app/features/auth';
 import { Button } from '@/app/shared/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { capitalizeFirstLetter } from '@/app/shared/lib/utils';
 
 export default function ProfilePage() {
   const state = useProfilePageState();
   const { user } = useAuth();
   const router = useRouter();
 
-  const getDashboardPath = () => {
+  const getDashboardPath = (useRoleBased = false) => {
+    // Default: use common dashboard without custom path
+    if (!useRoleBased) {
+      return '/dashboard';
+    }
+
+    // Optional: use role-specific dashboard
     if (user?.role === 'creator') {
       return '/creator/dashboard';
     }
-    return '/brand/dashboard';
+    if (user?.role === 'brand') {
+      return '/brand/dashboard';
+    }
+
+    // Fallback to common dashboard
+    return '/dashboard';
   };
 
   if (state.type === 'loading') {
@@ -33,14 +45,26 @@ export default function ProfilePage() {
                   Manage your account information and preferences
                 </p>
               </div>
-              <Button
-                variant='outline'
-                onClick={() => router.push(getDashboardPath())}
-                className='flex items-center gap-2'
-              >
-                <ArrowLeft className='w-4 h-4' />
-                Back to Dashboard
-              </Button>
+              <div className='flex items-center gap-2'>
+                {user?.role && (
+                  <Button
+                    variant='outline'
+                    onClick={() => router.push(getDashboardPath(true))}
+                    className='flex items-center gap-2'
+                  >
+                    <LayoutDashboard className='w-4 h-4' />
+                    Role Dashboard
+                  </Button>
+                )}
+                <Button
+                  variant='outline'
+                  onClick={() => router.push(getDashboardPath())}
+                  className='flex items-center gap-2'
+                >
+                  <ArrowLeft className='w-4 h-4' />
+                  Back to Dashboard
+                </Button>
+              </div>
             </div>
           </div>
           <div className='text-center py-8 text-muted-foreground'>
@@ -69,14 +93,26 @@ export default function ProfilePage() {
                 Manage your account information and preferences
               </p>
             </div>
-            <Button
-              variant='outline'
-              onClick={() => router.push(getDashboardPath())}
-              className='flex items-center gap-2'
-            >
-              <ArrowLeft className='w-4 h-4' />
-              Back to Dashboard
-            </Button>
+            <div className='flex items-center gap-2'>
+              {user?.role && (
+                <Button
+                  variant='outline'
+                  onClick={() => router.push(getDashboardPath(true))}
+                  className='flex items-center gap-2'
+                >
+                  <LayoutDashboard className='w-4 h-4' />
+                  {capitalizeFirstLetter(user.role)} Dashboard
+                </Button>
+              )}
+              <Button
+                variant='outline'
+                onClick={() => router.push(getDashboardPath())}
+                className='flex items-center gap-2'
+              >
+                <ArrowLeft className='w-4 h-4' />
+                Back to Dashboard
+              </Button>
+            </div>
           </div>
         </div>
 

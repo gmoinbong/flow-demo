@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/app/shared/lib/cookie-utils';
-import type { User } from '@/app/types';
+import {
+  createResponse,
+  fetchUser,
+  getOnboardingPath,
+  matchesRoute,
+  ensureValidToken,
+} from '@/app/shared/lib/helpers';
+import { ACCESS_TOKEN_COOKIE } from '@/app/shared/lib/cookie-utils';
 
-// Route configuration
+const PUBLIC_PREFIXES = ['/_next/', '/static/'];
 const ROUTES = {
   public: ['/login', '/signup', '/auth/callback'],
   protected: ['/dashboard'], // Common dashboard route
@@ -20,220 +26,134 @@ const ROUTES = {
   ],
 };
 
-// Helper: Check if path matches any route patterns (exact or prefix match)
-function matchesRoute(pathname: string, routes: string[]): boolean {
-  return routes.some(route => {
-    // Exact match for root
-    if (route === '/' && pathname === '/') return true;
-    // Prefix match for other routes
-    if (route !== '/' && pathname.startsWith(route)) return true;
-    return false;
-  });
-}
-
-// Cache for fetchUser to prevent multiple calls in same request
-const userCache = new Map<string, { user: User | null; timestamp: number }>();
-const CACHE_DURATION = 1000; // 1 second - reduced for faster updates
-
-// Helper: Fetch user data with caching
-async function fetchUser(request: NextRequest, baseUrl: string): Promise<User | null> {
-  try {
-    const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-    if (!accessToken) return null;
-
-    // Check cache first
-    const cached = userCache.get(accessToken);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.user;
-    }
-
-    // Fetch user from API
-    const response = await fetch(`${baseUrl}/api/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Cookie: request.cookies.toString(),
-      },
-      cache: 'no-store',
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      userCache.delete(accessToken);
-      return null;
-    }
-
-    const user = await response.json() as User;
-    
-    // Cache the result
-    userCache.set(accessToken, { user, timestamp: Date.now() });
-
-    return user;
-  } catch (error) {
-    console.error('[Middleware] Failed to fetch user:', error);
-    return null;
-  }
-}
-
-// Helper: Determine onboarding redirect path
-function getOnboardingPath(user: User | null): string | null {
-  if (!user || user.onboardingComplete) return null;
-
-  const roleMap: Record<string, string> = {
-    creator: '/onboarding/creator',
-    brand: '/onboarding',
-  };
-
-  return roleMap[user.role || ''] || '/onboarding/role-selection';
-}
-
-// Helper: Create response with auth headers
-function createResponse(
-  request: NextRequest,
-  accessToken?: string,
-  redirectUrl?: string
-): NextResponse {
-  const headers = new Headers(request.headers);
-
-  if (accessToken) {
-    headers.set('x-access-token', accessToken);
-    headers.set('Authorization', `Bearer ${accessToken}`);
-  }
-
-  if (redirectUrl) {
-    return NextResponse.redirect(new URL(redirectUrl, request.url));
-  }
-
-  return NextResponse.next({ request: { headers } });
+// Helper to extract token string from ensureValidToken result
+function extractToken(tokenResult: string | { accessToken: string; refreshToken?: string } | null): string | undefined {
+  if (!tokenResult) return undefined;
+  if (typeof tokenResult === 'string') return tokenResult;
+  return tokenResult.accessToken;
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-  const baseUrl = request.nextUrl.origin;
+  const { pathname, origin, searchParams } = request.nextUrl;
 
-  // Skip middleware for static files and Next.js internal routes
+  const passThrough = (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
+    return createResponse(request, tokenResult);
+  };
+  
+  const redirect = (to: string, tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
+    return createResponse(request, tokenResult, to);
+  };
+
+  const redirectToLogin = () =>
+    redirect(`/login?redirect=${encodeURIComponent(pathname)}`, undefined);
+
+  const fetchUserSafe = async (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
+    const token = extractToken(tokenResult);
+    return fetchUser(request, origin, token);
+  };
+
   if (
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/static/') ||
-    pathname.includes('.') // files with extensions
+    (PUBLIC_PREFIXES && PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) ||
+    pathname.includes('.') ||
+    pathname.startsWith('/api/')
   ) {
-    return createResponse(request, accessToken);
+    return passThrough();
   }
 
-  // 1. Pass through API routes (with auth token if available)
-  if (pathname.startsWith('/api/')) {
-    return createResponse(request, accessToken);
-  }
-
-  // 2. Admin routes - require admin token
   if (matchesRoute(pathname, ROUTES.admin) && !pathname.startsWith('/admin/login')) {
     const adminToken = request.cookies.get('admin_token')?.value;
-    if (!adminToken) {
-      return createResponse(request, undefined, '/admin/login');
-    }
-    return createResponse(request, accessToken);
+    return adminToken ? passThrough() : redirect('/admin/login', undefined);
   }
 
-  // 3. Root path handling
   if (pathname === '/') {
-    if (!accessToken) {
-      return createResponse(request); // Show landing page
+    // Ensure valid token before checking user
+    const validToken = await ensureValidToken(request, origin);
+    if (!validToken) {
+      return passThrough();
     }
-    
-    const user = await fetchUser(request, baseUrl);
-    if (!user) {
-      return createResponse(request, undefined, '/login');
-    }
-    
-    const defaultDashboard = user.role === 'creator' ? '/creator/dashboard' : '/brand/dashboard';
-    const redirect = getOnboardingPath(user) || defaultDashboard;
-    return createResponse(request, accessToken, redirect);
+
+    const user = await fetchUserSafe(validToken);
+    if (!user) return redirect('/login', undefined);
+
+    return redirect(getOnboardingPath(user) || '/dashboard', validToken);
   }
 
-  // 4. Public auth pages - redirect if already authenticated
-  if (matchesRoute(pathname, ROUTES.public) && accessToken) {
-    const user = await fetchUser(request, baseUrl);
-    if (!user) {
-      return createResponse(request); // Invalid token, allow access to login
+  if (matchesRoute(pathname, ROUTES.public)) {
+    // Ensure valid token if refresh token exists
+    const validToken = await ensureValidToken(request, origin);
+    if (validToken) {
+      const user = await fetchUserSafe(validToken);
+      if (user) {
+        return redirect(
+          getOnboardingPath(user) ||
+          searchParams.get('redirect') ||
+          '/dashboard',
+          validToken
+        );
+      }
     }
-    
-    const defaultDashboard = user.role === 'creator' ? '/creator/dashboard' : '/brand/dashboard';
-    const redirect = getOnboardingPath(user) || request.nextUrl.searchParams.get('redirect') || defaultDashboard;
-    return createResponse(request, accessToken, redirect);
+    return passThrough();
   }
 
-  // 5. Protected routes - require authentication
-  const allProtectedRoutes = [
+  const protectedRoutes = [
     ...ROUTES.protected,
     ...ROUTES.brandRoutes,
     ...ROUTES.creatorRoutes,
     ...ROUTES.sharedProtected,
     ...ROUTES.onboarding,
   ];
-  
-  const isProtected = matchesRoute(pathname, allProtectedRoutes);
-  if (!isProtected) {
-    return createResponse(request, accessToken);
+
+  if (!matchesRoute(pathname, protectedRoutes)) {
+    return passThrough();
   }
 
-  // No token - redirect to login
-  if (!accessToken) {
-    const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`;
-    return createResponse(request, undefined, loginUrl);
+  // Ensure valid token for protected routes
+  const validToken = await ensureValidToken(request, origin);
+  if (!validToken) {
+    return redirectToLogin();
   }
 
-  // Fetch user for protected route access control
-  const user = await fetchUser(request, baseUrl);
-  if (!user) {
-    const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`;
-    return createResponse(request, undefined, loginUrl);
-  }
+  const user = await fetchUserSafe(validToken);
+  if (!user) return redirectToLogin();
 
   const isOnboarding = matchesRoute(pathname, ROUTES.onboarding);
 
-  // Block access to onboarding if already completed
   if (isOnboarding && user.onboardingComplete) {
-    const dashboardPath = user.role === 'creator' ? '/creator/dashboard' : '/brand/dashboard';
-    return createResponse(request, accessToken, dashboardPath);
+    return redirect(
+      user.role === 'creator'
+        ? '/creator/dashboard'
+        : '/brand/dashboard',
+      validToken
+    );
   }
 
-  // If user has role but is on role-selection, redirect to appropriate onboarding
-  if (pathname === '/onboarding/role-selection' && user.role) {
-    const onboardingPath = getOnboardingPath(user);
-    if (onboardingPath) {
-      return createResponse(request, accessToken, onboardingPath);
-    }
-  }
-
-  // If user is on wrong onboarding path for their role, redirect
-  if (pathname === '/onboarding/creator' && user.role !== 'creator') {
-    return createResponse(request, accessToken, '/onboarding');
-  }
-  if (pathname === '/onboarding' && user.role === 'creator') {
-    return createResponse(request, accessToken, '/onboarding/creator');
-  }
-
-  // Require onboarding completion for non-onboarding protected routes
   if (!isOnboarding) {
     const onboardingPath = getOnboardingPath(user);
-    if (onboardingPath) {
-      return createResponse(request, accessToken, onboardingPath);
-    }
+    if (onboardingPath) return redirect(onboardingPath, validToken);
   }
 
-  // Check role-based access for brand/creator routes
-  const isBrandRoute = matchesRoute(pathname, ROUTES.brandRoutes);
-  const isCreatorRoute = matchesRoute(pathname, ROUTES.creatorRoutes);
-
-  if (isBrandRoute && user.role !== 'brand') {
-    return createResponse(request, accessToken, '/creator/dashboard');
+  if (pathname === '/onboarding/role-selection' && user.role) {
+    const path = getOnboardingPath(user);
+    if (path) return redirect(path, validToken);
   }
 
-  if (isCreatorRoute && user.role !== 'creator') {
-    return createResponse(request, accessToken, '/brand/dashboard');
+  if (pathname === '/onboarding/creator' && user.role !== 'creator') {
+    return redirect('/onboarding', validToken);
   }
 
-  return createResponse(request, accessToken);
+  if (pathname === '/onboarding' && user.role === 'creator') {
+    return redirect('/onboarding/creator', validToken);
+  }
+
+  if (matchesRoute(pathname, ROUTES.brandRoutes) && user.role !== 'brand') {
+    return redirect('/creator/dashboard', validToken);
+  }
+
+  if (matchesRoute(pathname, ROUTES.creatorRoutes) && user.role !== 'creator') {
+    return redirect('/brand/dashboard', validToken);
+  }
+
+  return passThrough(validToken);
 }
 
 export const config = {
