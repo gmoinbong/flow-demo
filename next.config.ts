@@ -9,14 +9,18 @@ const nextConfig: NextConfig = {
 
   // API proxy configuration
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${
-          process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
-        }/api/:path*`,
-      },
-    ];
+    return {
+      afterFiles: [
+        // Proxy all API calls to backend
+        // Note: /api/auth/callback is handled by frontend route first (beforeFiles)
+        {
+          source: '/api/:path*',
+          destination: `${
+            process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
+          }/api/:path*`,
+        },
+      ],
+    };
   },
 
   // SEO and Performance optimizations
