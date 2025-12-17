@@ -35,19 +35,19 @@ function extractToken(tokenResult: string | { accessToken: string; refreshToken?
 
 export async function middleware(request: NextRequest) {
   const { pathname, origin, searchParams } = request.nextUrl;
-  
+
   // Middleware doesn't use rewrites, so we need direct backend URL
   // Development: use origin (localhost:3000) which proxies via rewrites for non-middleware requests
   // Production: use direct backend URL
   const isProduction = process.env.NODE_ENV === 'production';
-  const backendUrl = isProduction 
+  const backendUrl = isProduction
     ? 'https://api.pitchpal.xyz'  // Direct backend URL for production
     : origin;  // Local origin for development
- 
+
   const passThrough = (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult);
   };
- 
+
   const redirect = (to: string, tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult, to);
   };
@@ -130,7 +130,7 @@ export async function middleware(request: NextRequest) {
     return redirect(
       user.role === 'creator'
         ? '/creator/dashboard'
-        : '/brand/dashboard',
+        : '/dashboard',
       validToken
     );
   }
@@ -139,7 +139,10 @@ export async function middleware(request: NextRequest) {
     const onboardingPath = getOnboardingPath(user);
     if (onboardingPath) return redirect(onboardingPath, validToken);
   }
-
+  // Shared protected routes (campaigns, creators, payments, reports) are accessible to both roles
+  if (matchesRoute(pathname, ROUTES.sharedProtected)) {
+    return passThrough(validToken);
+  }
   if (pathname === '/onboarding/role-selection' && user.role) {
     const path = getOnboardingPath(user);
     if (path) return redirect(path, validToken);
@@ -160,6 +163,8 @@ export async function middleware(request: NextRequest) {
   if (matchesRoute(pathname, ROUTES.creatorRoutes) && user.role !== 'creator') {
     return redirect('/dashboard', validToken);
   }
+
+
 
   return passThrough(validToken);
 }

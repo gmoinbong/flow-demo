@@ -24,7 +24,7 @@ export default function ProfilePage() {
       return '/creator/dashboard';
     }
     if (user?.role === 'brand') {
-      return '/brand/dashboard';
+      return '/dashboard';
     }
 
     // Fallback to common dashboard

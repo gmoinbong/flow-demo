@@ -110,7 +110,7 @@ export function OnboardingFlow() {
           await new Promise(resolve => setTimeout(resolve, 300));
 
           // Redirect to brand dashboard
-          window.location.href = '/brand/dashboard';
+          window.location.href = '/dashboard';
         } catch (error) {
           console.error('Failed to complete onboarding:', error);
           toast({
