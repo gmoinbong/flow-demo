@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
   const passThrough = (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult);
   };
-  
+
   const redirect = (to: string, tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult, to);
   };
@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
     redirect(`/login?redirect=${encodeURIComponent(pathname)}`, undefined);
 
   const fetchUserSafe = async (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
-    const token = extractToken(tokenResult);
+    const token = extractToken(tokenResult as string | { accessToken: string; refreshToken?: string } | null);
     return fetchUser(request, origin, token);
   };
 
