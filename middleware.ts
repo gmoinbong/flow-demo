@@ -36,13 +36,18 @@ function extractToken(tokenResult: string | { accessToken: string; refreshToken?
 export async function middleware(request: NextRequest) {
   const { pathname, origin, searchParams } = request.nextUrl;
   
-  // Use backend URL for API calls in middleware
-  const backendUrl = process.env.NEXT_PUBLIC_BASE_URL || origin;
-
+  // Middleware doesn't use rewrites, so we need direct backend URL
+  // Development: use origin (localhost:3000) which proxies via rewrites for non-middleware requests
+  // Production: use direct backend URL
+  const isProduction = process.env.NODE_ENV === 'production';
+  const backendUrl = isProduction 
+    ? 'https://api.pitchpal.xyz'  // Direct backend URL for production
+    : origin;  // Local origin for development
+ 
   const passThrough = (tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult);
   };
-  
+ 
   const redirect = (to: string, tokenResult?: string | { accessToken: string; refreshToken?: string } | null) => {
     return createResponse(request, tokenResult, to);
   };
