@@ -70,7 +70,8 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for cookies to be set and visible to subsequent requests
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         window.history.replaceState(null, '', '/auth/callback');
 
@@ -81,6 +82,15 @@ export default function AuthCallbackPage() {
           });
           if (userResponse.ok) {
             fullUser = await userResponse.json();
+          } else {
+            // If first attempt fails, retry once after delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const retryResponse = await fetch('/api/auth/me', {
+              credentials: 'include',
+            });
+            if (retryResponse.ok) {
+              fullUser = await retryResponse.json();
+            }
           }
         } catch (err) {
           console.error('Failed to fetch user data:', err);
