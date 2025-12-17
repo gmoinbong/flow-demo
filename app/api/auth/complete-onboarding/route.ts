@@ -49,24 +49,8 @@ export async function POST(request: NextRequest) {
 
     const user = await userResponse.json();
 
-    // Get profile and update status to 'active'
-    const profileResponse = await fetch(`${backendUrl}/profile`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!profileResponse.ok) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: profileResponse.status }
-      );
-    }
-
-    const profileData = await profileResponse.json();
-    const profile = profileData;
-
     // Update profile status to active
+    // Profile should already exist (created when role was selected)
     const updateResponse = await fetch(`${backendUrl}/profile`, {
       method: 'PATCH',
       headers: {
