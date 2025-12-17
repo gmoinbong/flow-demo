@@ -56,6 +56,8 @@ export function OnboardingFlow() {
     industry: '',
     website: '',
     description: '',
+    companySize: '',
+    userRole: '',
     goals: [] as string[],
     targetAge: '',
     targetGender: '',
@@ -85,6 +87,10 @@ export function OnboardingFlow() {
             headers: {
               'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+              companySize: formData.companySize || null,
+              userRole: formData.userRole || null,
+            }),
           });
 
           if (!response.ok) {
@@ -109,7 +115,7 @@ export function OnboardingFlow() {
           // Small delay for toast to show
           await new Promise(resolve => setTimeout(resolve, 300));
 
-          // Redirect to brand dashboard
+          // Redirect to dashboard (middleware will handle routing)
           window.location.href = '/dashboard';
         } catch (error) {
           console.error('Failed to complete onboarding:', error);
@@ -233,6 +239,45 @@ export function OnboardingFlow() {
                   onChange={e => updateFormData('description', e.target.value)}
                   rows={4}
                 />
+              </div>
+
+              <div className='space-y-2'>
+                <Label>Company Size</Label>
+                <Select
+                  value={formData.companySize}
+                  onValueChange={value => updateFormData('companySize', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select company size' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='1-10'>1-10 employees</SelectItem>
+                    <SelectItem value='11-50'>11-50 employees</SelectItem>
+                    <SelectItem value='51-200'>51-200 employees</SelectItem>
+                    <SelectItem value='201-1000'>201-1000 employees</SelectItem>
+                    <SelectItem value='1000+'>1000+ employees</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className='space-y-2'>
+                <Label>Your Role</Label>
+                <Select
+                  value={formData.userRole}
+                  onValueChange={value => updateFormData('userRole', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select your role' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='marketing-manager'>Marketing Manager</SelectItem>
+                    <SelectItem value='marketing-director'>Marketing Director</SelectItem>
+                    <SelectItem value='brand-manager'>Brand Manager</SelectItem>
+                    <SelectItem value='cmo'>CMO</SelectItem>
+                    <SelectItem value='founder'>Founder</SelectItem>
+                    <SelectItem value='other'>Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </>
           )}

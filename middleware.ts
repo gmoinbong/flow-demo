@@ -6,7 +6,6 @@ import {
   matchesRoute,
   ensureValidToken,
 } from '@/app/shared/lib/helpers';
-import { ACCESS_TOKEN_COOKIE } from '@/app/shared/lib/cookie-utils';
 
 const PUBLIC_PREFIXES = ['/_next/', '/static/'];
 const ROUTES = {
@@ -156,8 +155,15 @@ export async function middleware(request: NextRequest) {
     return redirect('/onboarding/creator', validToken);
   }
 
-  if (matchesRoute(pathname, ROUTES.brandRoutes) && user.role !== 'brand') {
-    return redirect('/creator/dashboard', validToken);
+  // Handle brand routes - redirect to /dashboard for brand users
+  if (matchesRoute(pathname, ROUTES.brandRoutes)) {
+    if (user.role !== 'brand') {
+      return redirect('/creator/dashboard', validToken);
+    }
+    // For brand users, redirect /brand/* routes to /dashboard
+    if (pathname.startsWith('/brand/')) {
+      return redirect('/dashboard', validToken);
+    }
   }
 
   if (matchesRoute(pathname, ROUTES.creatorRoutes) && user.role !== 'creator') {

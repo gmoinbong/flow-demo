@@ -49,8 +49,11 @@ export async function POST(request: NextRequest) {
 
     const user = await userResponse.json();
 
+    // Get request body for companySize and userRole
+    const body = await request.json().catch(() => ({}));
+
     // Update profile status to active
-    // Profile should already exist (created when role was selected)
+    // Brand will be created automatically in backend if user is brand
     const updateResponse = await fetch(`${backendUrl}/profile`, {
       method: 'PATCH',
       headers: {
@@ -59,6 +62,8 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         status: 'active',
+        companySize: body.companySize || null,
+        userRole: body.userRole || null,
       }),
     });
 
